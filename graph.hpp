@@ -1,3 +1,6 @@
+#ifndef GRAPH_H
+#define GRAPH_H
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -114,22 +117,4 @@ private:
     }
 };
 
-int main(int argc, char *argv[]) {
-    Graph g("DoK");
-
-    std::cout << "--" << std::endl;
-
-    for (auto &i : g.nodes())
-        std::cout << i << " ";
-    std::cout << std::endl;
-
-    std::cout << "--" << std::endl;
-
-    for (auto &i : g.nodes()) {
-        std::cout << i << ": ";
-        auto nbrs = g.neighbours(i);
-        for (auto &j : nbrs)
-            std::cout << j << " ";
-        std::cout << std::endl;
-    }
-}
+#endif
