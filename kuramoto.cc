@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <iostream>
 #include <unordered_map>
-
 #include "rv.hpp"
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Matrix;
@@ -36,27 +35,6 @@ inline double order_param(Eigen::MatrixBase<Derived>& theta) {
     }
 
     return sqrt(sum_real*sum_real + sum_complex*sum_complex)/N;
-}
-
-
-inline double sinc(double x) {
-    double ax = fabs(x);
-    if (ax < 0.006) {
-        if (x == 0.)
-            return 1;
-        double x2 = x*x;
-        if(ax < 2e-4)
-            return 1. - x2/6.;
-        else 
-            return 1. - x2/6.*(1 - x2/20.);
-    }
-    /* else */
-    return sin(x)/x;
-}
-
-inline double A(double x, double rho) {
-    double Irho = 1.-rho;
-    return pow(Irho*sinc(Irho*x),Irho)*pow(rho*sinc(rho*x),rho)/sinc(x);
 }
 
 template <typename DerivedA, typename DerivedB, typename DerivedC>
@@ -257,8 +235,8 @@ int main(int argc, char const *argv[]) {
         0, 1, 0,
         0, 1, 1;
 
-    //path(globalCoupling, noiseScale, initialConditions, intrinsicFreqs,
-    //        adjacencyMatrix, rho, c, alpha, p, t, timeSteps, seed);
+    path(globalCoupling, noiseScale, initialConditions, intrinsicFreqs,
+            adjacencyMatrix, rho, c, alpha, p, t, timeSteps, seed);
 
     //paths(globalCoupling, noiseScale, initialConditions, intrinsicFreqs,
     //        adjacencyMatrix, rho, c, alpha, p, t, timeSteps, seed, npaths);
