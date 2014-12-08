@@ -6,6 +6,9 @@
 
 #include <iostream>
 #include <random>
+#include <fstream>
+#include <string>
+#include <sstream>
 #include <Eigen/Dense>
 #include "graph.hpp"
 
@@ -241,23 +244,28 @@ int main(int argc, char const *argv[]) {
     double globalCoupling = 0.8;
     double noiseScale = 0.05;
 
-    Vector initialConditions(3);
-    initialConditions << 0.3, 6.0, 3.14;
+    string filename = "graphs.g6";
+    ifstream graphfile(filename);
+    string line;
+    while (getline(graphfile, line)) {
+        Graph G(line);
+        auto n = G.size();
 
-    Vector intrinsicFreqs(3);
-    intrinsicFreqs << 0.2, 0.2, 0.2;
+        Matrix adjacencyMatrix = Matrix::Zero(n,n);
+        for (size_t i = 0; i < n; ++i) {
+            for (auto &j : G.neighbours(i))
+                adjacencyMatrix(i,j) = 1;
+        }
 
-    Matrix adjacencyMatrix(3,3);
-    adjacencyMatrix <<
-        0, 0, 1,
-        0, 1, 0,
-        0, 1, 1;
+        Vector initialConditions = Vector::LinSpaced(n, 0, 3.14);
 
-    path(globalCoupling, noiseScale, initialConditions, intrinsicFreqs,
-            adjacencyMatrix, rho, c, alpha, p, t, timeSteps, seed);
+        Vector intrinsicFreqs = Vector::Ones(n) * 0.2;
 
-    //paths(globalCoupling, noiseScale, initialConditions, intrinsicFreqs,
-    //        adjacencyMatrix, rho, c, alpha, p, t, timeSteps, seed, npaths);
+        paths(globalCoupling, noiseScale, initialConditions, intrinsicFreqs,
+                adjacencyMatrix, rho, c, alpha, p, t, timeSteps, seed, npaths);
+
+        cout << "----" << endl;
+    }
 
     return 0;
 }
