@@ -12,3 +12,5 @@ set(SOURCE_FILES kuramoto.cc)
 add_executable(kuramoto ${SOURCE_FILES})
 
 add_executable(adj adj.cc)
+add_executable(test_variates test_variates.cc)
+

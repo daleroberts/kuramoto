@@ -259,7 +259,7 @@ int main(int argc, char const *argv[]) {
 
         Vector initialConditions = Vector::LinSpaced(n, 0, 3.14);
 
-        Vector intrinsicFreqs = Vector::Ones(n) * 0.2;
+        Vector intrinsicFreqs = Vector::LinSpaced(n, -1, 1);
 
         paths(globalCoupling, noiseScale, initialConditions, intrinsicFreqs,
                 adjacencyMatrix, rho, c, alpha, p, t, timeSteps, seed, npaths);
