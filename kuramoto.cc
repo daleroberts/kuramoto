@@ -4,6 +4,10 @@
  * Dale Roberts <dale.o.roberts@gmail.com>
  */
 
+#define _USE_MATH_DEFINES
+
+#include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <random>
 #include <fstream>
@@ -11,6 +15,7 @@
 #include <sstream>
 #include <Eigen/Dense>
 #include "graph.hpp"
+#include "variates.hpp"
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
@@ -60,108 +65,20 @@ inline double A(double x, double rho) {
     return pow(Irho*sinc(Irho*x),Irho)*pow(rho*sinc(rho*x),rho)/sinc(x);
 }
 
-template <typename DerivedA, typename DerivedB, typename DerivedC>
-void path(const double globalCoupling, const double noiseScale,
-        Eigen::MatrixBase<DerivedA>& initialConditions,
-        Eigen::MatrixBase<DerivedB>& intrinsicFreqs,
-        Eigen::MatrixBase<DerivedC>& adjacencyMatrix,
-        const double rho,
-        const double c,
-        const double alpha,
-        const double p,
-        const double t,
-        const int timeSteps,
-        const uint seed) {
-
-    mt19937 rng(seed);
-    uniform_real_distribution<> runif(0,1);
-    exponential_distribution<> rexp(1);
-
-    double dt = t/timeSteps;
-
-    double gamma = c/(1-rho) - p;
-    double cf = pow(cos(M_PI_2*rho),-1./rho);
-    double sigma = pow(-dt*c*cos(M_PI*rho/2.)*tgamma(-rho), 1./rho);
-    double mu = -dt*p;
-
-    auto N = initialConditions.size();
-
-    // Initialize
-
-    Vector theta(N);
-    for (size_t i = 0; i < N; ++i)
-        theta(i) = initialConditions(i);
-
-    Vector r(timeSteps+1);
-    r(0) = order_param(theta);
-
-    // Time stepping
-
-    double U, V, W, xi, drift;
-    double s = 0.0;
-    long k = 0;
-
-    do 
-    {
-        s += dt;
-        k++;
-
-        for (int i = 0; i < N; i++)
-        {
-            // simulate a tempered stable random variable
-
-            do 
-            {
-                U = runif(rng);
-                V = runif(rng);
-                do {
-                    W = rexp(rng);
-                } while (W == 0.);
-                xi = mu + sigma*cf*pow(A(M_PI*U,rho)/pow(W,1.-rho),1./rho);
-            } while (V > exp(-alpha*xi));
-
-            // calculate the drift
-
-            drift = intrinsicFreqs(i);
-            for (int j = 0; j < N; j++)
-                drift -= globalCoupling/N*adjacencyMatrix(i,j)*sin(theta(i) - theta(j));
-
-            // increment process
-
-            theta(i) += drift*dt + noiseScale*xi;
-
-            theta(i) = mod2pi(theta(i));
-        }
-
-        r(k) = order_param(theta);
-
-#ifdef DEBUG
-        printf("%6.3f", s);
-        printf(" %6.3f", order_param(theta));
-        for (int i = 0; i < N; i++) {
-            printf(" %6.3f", theta(i));
-        }
-        printf("\n");
-#endif
-
-    } while (s < t);
-
-}
-
-template <typename DerivedA, typename DerivedB, typename DerivedC>
+template <typename DerivedA, typename DerivedB>
 void paths(const double globalCoupling,
-        const double noiseScale,
-        Eigen::MatrixBase<DerivedA>& initialConditions,
-        Eigen::MatrixBase<DerivedB>& intrinsicFreqs,
-        Eigen::MatrixBase<DerivedC>& adjacencyMatrix,
-        const double rho,
-        const double c,
-        const double alpha,
-        const double p,
-        const double t,
-        const int timeSteps,
-        const unsigned int seed,
-        const int npaths) {
+           const double noiseScale,
+           const Eigen::MatrixBase<DerivedA>& initialConditions,
+           const Eigen::MatrixBase<DerivedB>& intrinsicFreqs,
+           Graph& G,
+           const double rho,
+           const double c,
+           const double alpha,
+           const double p,
+           const double t,
+           const uint32_t timeSteps,
+           const uint32_t seed,
+           const uint32_t npaths) {
 
     mt19937 rng(seed);
     uniform_real_distribution<> runif(0,1);
@@ -169,7 +86,7 @@ void paths(const double globalCoupling,
 
     double dt = t/timeSteps;
 
-    double gamma = c/(1-rho) - p;
+double gamma = c/(1-rho) - p;
     double cf = pow(cos(M_PI_2*rho),-1./rho);
     double sigma = pow(-dt*c*cos(M_PI*rho/2.)*tgamma(-rho), 1./rho);
     double mu = -dt*p;
@@ -178,9 +95,9 @@ void paths(const double globalCoupling,
 
     Vector avg_order(timeSteps+1);
 
-    for (unsigned int j=0; j < npaths; ++j) {
+    for (size_t j=0; j < npaths; ++j) {
         Vector theta(N);
-        for (int i = 0; i < N; ++i)
+        for (size_t i = 0; i < N; ++i)
             theta(i) = initialConditions(i);
 
         avg_order(0) += order_param(theta);
@@ -193,7 +110,7 @@ void paths(const double globalCoupling,
             s += dt;
             k++;
 
-            for (int i = 0; i < N; i++) {
+            for (size_t i = 0; i < N; i++) {
                 // simulate a tempered stable random variable
                 do {
                     U = runif(rng);
@@ -206,8 +123,8 @@ void paths(const double globalCoupling,
 
                 // calculate the drift
                 drift = intrinsicFreqs(i);
-                for (int j = 0; j < N; j++)
-                    drift -= globalCoupling/N*adjacencyMatrix(i,j)*sin(theta(i) - theta(j));
+                for (auto &j: G.neighbours(i))
+                    drift -= globalCoupling/N*sin(theta(i) - theta(j));
 
                 // increment process
                 theta(i) += drift*dt + noiseScale*xi;
@@ -221,7 +138,7 @@ void paths(const double globalCoupling,
 
     avg_order /= npaths;
 
-    for (int i = 0; i < avg_order.size(); ++i) {
+    for (size_t i = 0; i < avg_order.size(); ++i) {
         printf("%6.3f %6.3f\n", i*dt, avg_order(i));
     }
 }
@@ -234,12 +151,10 @@ int main(int argc, char const *argv[]) {
     double xi = 0.2;
     double p = (1+xi)*(-c*rho*tgamma(-rho)*pow(alpha,rho-1));
 
-    printf("rho: %f c: %f alpha: %f xi: %f p: %f\n", rho, c, alpha, xi, p);
-
     double t = 30.0;
-    int timeSteps = 5000;
+    int timeSteps = 3000;
     int seed = 1234;
-    int npaths = 1000;
+    int npaths = 500;
 
     double globalCoupling = 0.8;
     double noiseScale = 0.05;
@@ -248,21 +163,16 @@ int main(int argc, char const *argv[]) {
     ifstream graphfile(filename);
     string line;
     while (getline(graphfile, line)) {
+        line.erase(line.find_last_not_of(" \n\r\t")+1);
         Graph G(line);
         auto n = G.size();
-
-        Matrix adjacencyMatrix = Matrix::Zero(n,n);
-        for (size_t i = 0; i < n; ++i) {
-            for (auto &j : G.neighbours(i))
-                adjacencyMatrix(i,j) = 1;
-        }
-
+        printf("rho: %f c: %f alpha: %f xi: %f p: %f graph size: %lu\n", rho, c, alpha, xi, p, n);
+        
         Vector initialConditions = Vector::LinSpaced(n, 0, 3.14);
-
         Vector intrinsicFreqs = Vector::LinSpaced(n, -1, 1);
 
         paths(globalCoupling, noiseScale, initialConditions, intrinsicFreqs,
-                adjacencyMatrix, rho, c, alpha, p, t, timeSteps, seed, npaths);
+              G, rho, c, alpha, p, t, timeSteps, seed, npaths);
 
         cout << "----" << endl;
     }

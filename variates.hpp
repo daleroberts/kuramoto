@@ -3,12 +3,12 @@
 
 using namespace std;
 
-class stable_distribution
+class StableVariate
 {
 public:
   explicit
-  stable_distribution(const double& alpha = double(0.5),
-                      const double& a = double(1))
+  StableVariate(const double& alpha = double(0.5),
+                const double& a = double(1))
   : _alpha(alpha), _a(a), _runif(-M_PI_2,M_PI_2), _rexp(1)
   { 
     _factor = pow(-a*tgamma(-alpha)*cos(M_PI_2*alpha), 1./alpha);
@@ -43,14 +43,14 @@ private:
   exponential_distribution<> _rexp;
 };
 
-class tempered_stable_distribution
+class TemperedStableVariate
 {
 public:
   explicit
-  tempered_stable_distribution(const double& alpha = double(0.5),
-                               const double& a = double(1),
-                               const double& b = double(1))
-  : _rstable(alpha, a), _runif(0,1), _b(b)
+  TemperedStableVariate(const double& alpha = double(0.5),
+                        const double& a = double(1),
+                        const double& b = double(1))
+  : _rstable(alpha, a), _b(b), _runif(0,1)
   { }
 
   double
@@ -68,7 +68,8 @@ public:
   template<class _UniformRandomNumberGenerator>
     double
     operator()(_UniformRandomNumberGenerator& urng) {
-      double U, V, X;
+      double U, V
+        ;
       do {
         U = _runif(urng);
         V = _rstable(urng);
@@ -78,6 +79,6 @@ public:
 
 private:
   double _b;
-  stable_distribution _rstable;
+  StableVariate _rstable;
   uniform_real_distribution<> _runif;
 };

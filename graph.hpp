@@ -2,6 +2,7 @@
 #include <vector>
 #include <unordered_map>
 #include <istream>
+#include "utils.h"
 
 using namespace std;
 
@@ -11,8 +12,8 @@ public:
         string s(str);
         if (s.find(">>graph6<<") != string::npos)
             s = s.substr(10);
-
-        auto data = graph6_to_data(s);
+        
+        vector<int> data = graph6_to_data(s);
 
         size_t n;
         if (data[0] <= 62) {
@@ -30,7 +31,7 @@ public:
 
         size_t nd = (n * (n - 1) / 2 + 5) / 6;
         if (data.size() != nd)
-            cout << "error parsing graph: " << s << endl;
+            cerr << "error parsing graph: " << s << endl;
 
         vector <size_t> nodes;
         for (size_t i = 0; i < n; ++i)
@@ -88,7 +89,7 @@ public:
         return nodes_.count(i) > 0;
     }
 
-    vector <size_t> neighbours(const size_t i) {
+    vector<size_t> neighbours(const size_t i) {
         vector <size_t> v;
         for (auto &a : adj_[i])
             v.push_back(a.first);
@@ -102,14 +103,17 @@ private:
     unordered_map <size_t, nodemap> adj_;
     size_t n_;
 
-    vector <int> graph6_to_data(string s) {
-        vector <int> v;
+    vector<int> graph6_to_data(string s) {
+        vector<int> v;
         for (auto &c : s)
-            v.push_back(c - 63);
+            v.push_back(int(c) - 63);
         auto max = *max_element(v.begin(), v.end());
         auto min = *min_element(v.begin(), v.end());
-        if (v.size() > 0 && (min < 0 || max > 63))
+        if (v.size() > 0 && (min < 0 || max > 63)) {
             v.clear();
+            cerr << "error parsing graph6 file." << endl;
+        }
+        
         return v;
     }
 };
