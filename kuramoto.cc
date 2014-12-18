@@ -14,8 +14,9 @@
 #include <string>
 #include <sstream>
 #include <Eigen/Dense>
-#include "graph.hpp"
-#include "variates.hpp"
+
+#include "graph.h"
+#include "variates.h"
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
@@ -86,7 +87,7 @@ void paths(const double globalCoupling,
 
     double dt = t/timeSteps;
 
-double gamma = c/(1-rho) - p;
+    double gamma = c/(1-rho) - p;
     double cf = pow(cos(M_PI_2*rho),-1./rho);
     double sigma = pow(-dt*c*cos(M_PI*rho/2.)*tgamma(-rho), 1./rho);
     double mu = -dt*p;
@@ -163,7 +164,7 @@ int main(int argc, char const *argv[]) {
     ifstream graphfile(filename);
     string line;
     while (getline(graphfile, line)) {
-        line.erase(line.find_last_not_of(" \n\r\t")+1);
+        line.erase(line.find_last_not_of("\n\r")+1);
         Graph G(line);
         auto n = G.size();
         printf("rho: %f c: %f alpha: %f xi: %f p: %f graph size: %lu\n", rho, c, alpha, xi, p, n);

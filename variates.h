@@ -3,14 +3,15 @@
 
 using namespace std;
 
-class StableVariate
+typedef std::normal_distribution<> NormalDistribution;
+
+class StableDistribution
 {
 public:
   explicit
-  StableVariate(const double& alpha = double(0.5),
-                const double& a = double(1))
-  : _alpha(alpha), _a(a), _runif(-M_PI_2,M_PI_2), _rexp(1)
-  { 
+  StableDistribution(const double& alpha = double(0.5),
+                     const double& a = double(1))
+  : _alpha(alpha), _a(a), _runif(-M_PI_2,M_PI_2), _rexp(1) { 
     _factor = pow(-a*tgamma(-alpha)*cos(M_PI_2*alpha), 1./alpha);
     _theta = atan(tan(M_PI_2*alpha));
   }
@@ -43,13 +44,13 @@ private:
   exponential_distribution<> _rexp;
 };
 
-class TemperedStableVariate
+class TemperedStableDistribution
 {
 public:
   explicit
-  TemperedStableVariate(const double& alpha = double(0.5),
-                        const double& a = double(1),
-                        const double& b = double(1))
+  TemperedStableDistribution(const double& alpha = double(0.5),
+                             const double& a = double(1),
+                             const double& b = double(1))
   : _rstable(alpha, a), _b(b), _runif(0,1)
   { }
 
@@ -79,6 +80,6 @@ public:
 
 private:
   double _b;
-  StableVariate _rstable;
+  StableDistribution _rstable;
   uniform_real_distribution<> _runif;
 };

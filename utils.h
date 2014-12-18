@@ -1,10 +1,9 @@
-#ifndef kuramoto_utils_h
-#define kuramoto_utils_h
+#pragma once
 
-#include <iostream>
-#include <iterator>
-
-#define PO(e) std::cout << #e << ": " << std::setprecision(10) << e << std::endl
-#define PIO(v) std::cout << #v << ": "; copy(v.begin(), v.end(), ostream_iterator<double>(cout, " ")); std::cout << " (size: " << v.size() << ")" << std::endl
-
-#endif
+namespace sa
+{
+    template <typename Container>
+    void sort(Container &c) {
+        std::sort(c.begin(), c.end());
+    }
+}
