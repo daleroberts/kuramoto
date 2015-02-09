@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <cstdint>
 
 typedef uint32_t node_t;
 

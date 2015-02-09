@@ -1,6 +1,8 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
+#include <algorithm>
+#include <string>
 
 #include "graph.h"
 #include "utils.h"
