@@ -51,7 +51,7 @@ public:
     TemperedStableDistribution(const double& alpha = double(0.5),
                                const double& a = double(1),
                                const double& b = double(1),
-                               const double& c = double(1.1))
+                               const double& c = double(5))
     : _alpha(alpha), _a(a), _b(b), _c(c), _rstable(alpha, a), _runif(0,1)
     { }
     

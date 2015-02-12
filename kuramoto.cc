@@ -79,7 +79,7 @@ void paths(Graph& G,
     {
     int thread_seed = seed + omp_get_thread_num();
     mt19937 rng(thread_seed);
-    TemperedStableDistribution rtstable(alpha, a, b);
+    TemperedStableDistribution rtstable(alpha, a, b, 5.0);
     
     #pragma omp for reduction(+:avg_order)
     for (size_t j=0; j < npaths; ++j) {
