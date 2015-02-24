@@ -74,12 +74,13 @@ void paths(Graph& G,
     auto N = initial.size();
 
     Vector avg_order = Vector::Zero(nsteps+1);
-    
+
     #pragma omp parallel
     {
     int thread_seed = seed + omp_get_thread_num();
     mt19937 rng(thread_seed);
-    TemperedStableDistribution rtstable(alpha, a, b, 5.0);
+    printf("%f %f %f\n", alpha, a, b);
+    TemperedStableDistribution rtstable(alpha, a, b, 1.1);
     
     #pragma omp for reduction(+:avg_order)
     for (size_t j=0; j < npaths; ++j) {
@@ -90,13 +91,9 @@ void paths(Graph& G,
         avg_order(0) += order_param(theta);
         
         double xi, drift;
-        double s = 0.0;
-        long k = 0;
-        
-        do {
-            s += dt;
-            k++;
-            
+        printf(".");
+
+        for (size_t k = 0; k <= nsteps; k++) {
             for (size_t i = 0; i < N; i++) {
                 // simulate a tempered stable random variable
                 xi = rtstable(rng);
@@ -110,13 +107,13 @@ void paths(Graph& G,
                 theta(i) += drift*dt + xi;
                 theta(i) = mod2pi(theta(i));
             }
-            
             avg_order(k) += order_param(theta);
-            
-        } while (s < max_t);
+        }
     }
 
     }
+
+    printf("\n");
 
     avg_order /= npaths;
     
@@ -129,6 +126,8 @@ void paths(Graph& G,
 
 
 int main(int argc, char const *argv[]) {
+    setbuf(stdout, NULL);
+
     int seed      = argc > 1 ? atol(argv[1]) : 1234;
     int npaths    = argc > 2 ? atoi(argv[2]) : 1000;
     int nsteps    = argc > 3 ? atoi(argv[3]) : 5000;

@@ -45,13 +45,13 @@ data`Lambda4 =
 Print[Now];
 
 data`Alpha1 = 
-  Table[OrderParam[glist, alpha, 0.0, 0.3, 1000, maxTime, numPaths, 
+  Table[OrderParam[glist, alpha, 0.0001, 0.3, 1000, maxTime, numPaths, 
     numSteps], {alpha, {0.1, 0.5, 0.9, 0.95, 1.05, 1.1, 1.5, 1.99}}];
 
 Print[Now];
 
 data`Alpha2 = 
-  Table[OrderParam[glist, alpha, 0.0, 0.6, 1000, maxTime, numPaths, 
+  Table[OrderParam[glist, alpha, 0.0001, 0.6, 1000, maxTime, numPaths, 
     numSteps], {alpha, {0.1, 0.5, 0.9, 0.95, 1.05, 1.1, 1.5, 1.99}}];
 
 Print[Now];
