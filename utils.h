@@ -3,8 +3,8 @@
 
 namespace sa
 {
-    template <typename Container>
+  template <typename Container>
     void sort(Container &c) {
-        std::sort(c.begin(), c.end());
-    }
+    std::sort(c.begin(), c.end());
+  }
 }
