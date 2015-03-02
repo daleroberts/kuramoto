@@ -131,7 +131,6 @@ void paths(Graph& G,
     for (i = 0; i < order_stats.size() - 1; ++i)
         printf("{%.6f, %.6f, %.6f, %.6f},", i*dt, order_stats[i].mean(),
                order_stats[i].stddev(), order_stats[i].variance());
-    i++;
     printf("{%.6f, %.6f, %.6f, %.6f}}\n", i*dt, order_stats[i].mean(),
            order_stats[i].stddev(), order_stats[i].variance());
 }
