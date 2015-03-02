@@ -36,3 +36,7 @@
 Eigen
 build
 graphs.g6
+.depend
+kuramoto
+*.nb
+*.mx
