@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <vector>
 #include <random>
 #include <fstream>
 #include <string>
@@ -18,6 +19,7 @@
 #include "graph.h"
 #include "variates.h"
 #include "process.h"
+#include "statistics.h"
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -30,8 +32,18 @@ inline omp_int_t omp_get_max_threads() { return 1;}
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
 
-#pragma omp declare reduction (+ : Vector : omp_out += omp_in) \
-                              initializer (omp_priv(omp_orig))
+template <typename Iterable>
+inline void elementwise_add(Iterable& in, Iterable& out) {
+    auto in_iter = in.begin();
+    for (auto& el : out)
+        el += *(in_iter++);
+}
+
+#pragma omp declare reduction (+ : Vector : omp_out += omp_in)  \
+    initializer (omp_priv(omp_orig))
+
+#pragma omp declare reduction (+ : std::vector<Statistics> : elementwise_add(omp_in, omp_out)) \
+    initializer (omp_priv(omp_orig))
 
 using namespace std;
 
@@ -73,55 +85,55 @@ void paths(Graph& G,
     double dt = max_t/nsteps;
     auto N = initial.size();
 
-    Vector avg_order = Vector::Zero(nsteps+1);
+    vector<Statistics> order_stats(nsteps+1);
 
-    #pragma omp parallel
+#pragma omp parallel
     {
-    int thread_seed = seed + omp_get_thread_num();
-    mt19937 rng(thread_seed);
-    printf("%f %f %f\n", alpha, a, b);
-    TemperedStableDistribution rtstable(alpha, a, b, 1.1);
+        int thread_seed = seed + omp_get_thread_num();
+        mt19937 rng(thread_seed);
+        TemperedStableDistribution rtstable(alpha, a, b, 1.1);
+        uniform_real_distribution<> runif(-M_PI, M_PI);
     
-    #pragma omp for reduction(+:avg_order)
-    for (size_t j=0; j < npaths; ++j) {
-        Vector theta(N);
-        for (size_t i = 0; i < N; ++i)
-            theta(i) = initial(i);
-        
-        avg_order(0) += order_param(theta);
-        
-        double xi, drift;
-        printf(".");
+#pragma omp for reduction(+:order_stats)
+        for (size_t j=0; j < npaths; ++j) {
+            Vector theta(N);
 
-        for (size_t k = 0; k <= nsteps; k++) {
-            for (size_t i = 0; i < N; i++) {
-                // simulate a tempered stable random variable
-                xi = rtstable(rng);
+            // set initial condition
+            for (size_t i = 0; i < N; ++i)
+                theta(i) = mod2pi(runif(rng));
+        
+            order_stats[0].add(order_param(theta));
+        
+            double xi, drift;
+
+            for (size_t k = 0; k <= nsteps; k++) {
+                for (size_t i = 0; i < N; i++) {
+                    // simulate a tempered stable random variable
+                    xi = rtstable(rng);
                 
-                // calculate the drift
-                drift = freqs(i);
-                for (auto &j: G.neighbours(i))
-                    drift -= K/N*sin(theta(i) - theta(j));
+                    // calculate the drift
+                    drift = freqs(i);
+                    for (auto &j: G.neighbours(i))
+                        drift -= K/N*sin(theta(i) - theta(j));
                 
-                // increment process
-                theta(i) += drift*dt + xi;
-                theta(i) = mod2pi(theta(i));
+                    // increment process
+                    theta(i) += drift*dt + xi;
+                    theta(i) = mod2pi(theta(i));
+                }
+                order_stats[k].add(order_param(theta));
             }
-            avg_order(k) += order_param(theta);
         }
-    }
 
     }
 
-    printf("\n");
-
-    avg_order /= npaths;
-    
     printf("{");
-    for (size_t i = 0; i < avg_order.size()-1; ++i)
-        printf("{%.6f, %.6f},", i*dt, avg_order(i));
-    int i = avg_order.size() - 1;
-    printf("{%.6f, %.6f}}\n", i*dt, avg_order(i));
+    size_t i;
+    for (i = 0; i < order_stats.size() - 1; ++i)
+        printf("{%.6f, %.6f, %.6f, %.6f},", i*dt, order_stats[i].mean(),
+               order_stats[i].stddev(), order_stats[i].variance());
+    i++;
+    printf("{%.6f, %.6f, %.6f, %.6f}}\n", i*dt, order_stats[i].mean(),
+           order_stats[i].stddev(), order_stats[i].variance());
 }
 
 

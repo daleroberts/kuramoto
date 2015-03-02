@@ -1,8 +1,8 @@
-COMPILER = gcc
+COMPILER=gcc
 
 ifeq ($(COMPILER),gcc)
-CC=g++
-CCFLAGS=-O3 -std=c++11 -I/usr/local/include/eigen3 -I.
+CC=g++-4.9
+CCFLAGS=-O3 -std=c++11 -fopenmp -I/usr/local/include/eigen3 -I.
 endif
 
 ifeq ($(COMPILER),icc)
@@ -12,11 +12,14 @@ endif
 
 all: kuramoto
 
-%.o: %.cc variates.h graph.h
+%.o: %.cc variates.h graph.h statistics.h
 	$(CC) $(CCFLAGS) -c $<
 
-kuramoto: graph.o kuramoto.o
+kuramoto: graph.o statistics.o kuramoto.o
+	$(CC) $(CCFLAGS) $^ -o $@
+
+test_stat: test_stat.o statistics.o
 	$(CC) $(CCFLAGS) $^ -o $@
 
 clean:
-	-rm -f kuramoto *.o
+	-rm -f kuramoto test_stat test *.o

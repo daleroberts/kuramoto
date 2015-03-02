@@ -9,7 +9,7 @@ glist = {RandomGraph[WattsStrogatzGraphDistribution[1000, 0.0, 5]],
   RandomGraph[{1000, 5000}]}
 
 maxTime = 60.0;
-numPaths = 256;
+numPaths = 1024;
 numSteps = 1024;
 
 Print[Now];
