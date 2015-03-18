@@ -1,7 +1,7 @@
+#include <algorithm>
 #include <iomanip>
 #include <limits>
 #include <cmath>
-
 #include "statistics.h"
 
 Statistics::Statistics() {
@@ -115,7 +115,7 @@ void Statistics::reset() {
     fourth_power_sum_ = 0.0;
 }
 
-Statistics Statistics::operator+(const Statistics& other) {
+Statistics Statistics::operator+(const Statistics& other) const {
     Statistics tmp = *this;
     tmp.sample_number_ += other.sample_number_;
     tmp.sample_weight_ += other.sample_weight_;
