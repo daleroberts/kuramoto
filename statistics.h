@@ -1,6 +1,13 @@
 #pragma once
-#include <cstdlib>
-#include <boost/serialization/export.hpp>
+
+#include <boost/mpi/collectives/reduce.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi/environment.hpp>
+#include <algorithm>
+#include <boost/serialization/string.hpp>
+#include <boost/iterator/counting_iterator.hpp>
+#include <boost/lexical_cast.hpp>
+#include <numeric>
 
 class Statistics {
  public:
@@ -60,3 +67,8 @@ class Statistics {
   double sum_, quadratic_sum_, cubic_sum_, fourth_power_sum_;
   double min_, max_;
 };
+
+namespace boost { namespace mpi {
+  template <>
+  struct is_mpi_datatype<Statistics> : public mpl::true_ { };
+} }
