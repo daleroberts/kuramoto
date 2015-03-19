@@ -7,7 +7,6 @@
 
 #include <cmath>
 #include <cstdint>
-#include <iostream>
 #include <vector>
 #include <random>
 #include <fstream>
@@ -56,7 +55,7 @@ inline double mod2pi(double theta) {
 
 template <typename Derived>
 inline double order_param(const Eigen::MatrixBase<Derived>& theta) {
-    auto N = theta.size();
+    size_t N = theta.size();
     
     double sum_real = 0.0;
     double sum_complex = 0.0;
@@ -129,6 +128,7 @@ int main(int argc, char const *argv[]) {
     double sigma  = argc > 6 ? atof(argv[6]) : 1.0; // diffusivity
     double K      = argc > 7 ? atof(argv[7]) : 0.8; // global coupling
     double max_t  = argc > 8 ? atof(argv[8]) : 30.0; // maximum time
+    string filename = "graphs.g6";
     
     double dt = max_t/nsteps;
     double a = 0.5*alpha*pow(sigma,2.0)/(tgamma(1-alpha)*cos(M_PI*alpha/2));
@@ -136,14 +136,12 @@ int main(int argc, char const *argv[]) {
 
     vector<Statistics> order_stats(nsteps+1);
     TemperedStableDistribution rtstable(alpha, dt*a, b, 1.1);
-    NormalDistribution rnorm(0, dt*pow(sigma,2));
+    NormalDistribution rnorm(0, dt*pow(sigma, 2));
     
-    string filename = "graphs.g6";
     ifstream graphfile(filename);
     string line;
     while (getline(graphfile, line)) {
         Graph G(line);
-        auto n = G.size();
         vector<Statistics> stats;
         if (alpha > 1.999) {
             stats = paths(G, rnorm, alpha, a, b, K, max_t, nsteps, npaths, seed);

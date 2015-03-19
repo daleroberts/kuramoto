@@ -1,28 +1,29 @@
-COMPILER=gcc
-
-ifeq ($(COMPILER),gcc)
-CC=g++-4.9
-CCFLAGS=-O3 -std=c++11 -fopenmp -I/usr/local/include/eigen3 -I.
+BC?=release
+CC=g++
+SHELL=/bin/bash
+CFLAGS=-Wall -fopenmp -lm -std=c++11 -I. -I/usr/local/include/eigen3
+ 
+ifeq ($(BC),debug)
+	CFLAGS += -g3
+else
+	CFLAGS += -O2
 endif
 
-ifeq ($(COMPILER),icc)
-CC=icc
-CCFLAGS=-O3 -std=c++11 -openmp -I/usr/local/include/eigen3 -I.
-endif
+OBJS=$(patsubst %.cc,%.o,$(wildcard *.cc))
+DEPS=$(OBJS:.o=.d)
 
-all: kuramoto kuramoto_onepath
+EXEC=kuramoto
 
-%.o: %.cc variates.h graph.h statistics.h
-	$(CC) $(CCFLAGS) -c $<
+all: $(EXEC)
+kuramoto: kuramoto.o graph.o statistics.o
 
-kuramoto: graph.o statistics.o kuramoto.o
-	$(CC) $(CCFLAGS) $^ -o $@
+$(EXEC):
+	$(CC) $(CFLAGS) $^ -o $@
 
-kuramoto_onepath: graph.o statistics.o kuramoto_onepath.o
-	$(CC) $(CCFLAGS) $^ -o $@
+-include $(DEPS)
 
-dist: dist.o
-	$(CC) $(CCFLAGS) $^ -o $@
+%.o: %.cc
+	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
 clean:
-	-rm -f kuramoto dist kuramoto_onepath *.o
+	rm -fr $(EXEC) $(OBJS) $(DEPS)
