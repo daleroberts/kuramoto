@@ -14,6 +14,7 @@ if [ "`type -t module`" = 'function' ]; then
 fi
 
 cd ~/src/kuramoto
+mkdir -p results
 
 INPUT=params.csv
 OLDIFS=$IFS
@@ -21,15 +22,25 @@ IFS=,
 
 [ ! -f $INPUT ] && { echo "$INPUT file not found"; exit 99; }
 
+cp $INPUT ~/src/kuramoto/results
+cd ~/src/kuramoto/results
+
 perl -pi -e 's/\r\n|\n|\r/\n/g' $INPUT
 
 sed 1d $INPUT | while read i graphfile seed ngraphs npaths nsteps alpha lambda sigma K max_t outfile
 do
     M=`wc -l $graphfile | awk '{print $1}'`
-    echo "$i $graphfile seed:$seed ngraphs:$M npaths:$npaths nsteps:$nsteps alpha:$alpha lambda:$lambda sigma:$sigma K:$K max_t:$max_t outfile:$outfile" | tee doit.status
-    mpirun -bind-to-none -stdin none -np $PBS_NCPUS ./kuramoto_mpi $graphfile $M $seed $npaths $nsteps $alpha $lambda $sigma $K $max_t > "$outfile.txt"
-    export outfile=$outfile
-    gnuplot -e "outfile='$outfile.png'" -e "infile='$outfile.txt'" plot.gnuplot
-done
-IFS=$OLDIFS
 
+    echo "$i $graphfile seed:$seed ngraphs:$ngraphs npaths:$npaths nsteps:$nsteps alpha:$alpha lambda:$lambda sigma:$sigma K:$K max_t:$max_t outfile:$outfile" | tee doit.status
+
+    if [ ! -f "$outfile.txt" ]; then
+    	mpirun -bind-to-none -stdin none -np $PBS_NCPUS ../kuramoto_mpi $graphfile $M $seed $npaths $nsteps $alpha $lambda $sigma $K $max_t > "$outfile.txt"
+    fi
+
+    if [ ! -f "$outfile.png" ]; then
+    	export outfile=$outfile
+    	gnuplot -e "outfile='$outfile.png'" -e "infile='$outfile.txt'" ../plot.gnuplot
+    fi
+done
+
+IFS=$OLDIFS
