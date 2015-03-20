@@ -12,20 +12,15 @@ endif
 OBJS=$(patsubst %.cc,%.o,$(wildcard *.cc))
 DEPS=$(OBJS:.o=.d)
 
-EXEC=kuramoto
+EXEC=kuramoto_mpi
 
-all: $(EXEC)
+all: kuramoto_mpi kuramoto
 
 kuramoto: kuramoto.o graph.o statistics.o
-
-test_reduce: test_reduce.cc
-	$(CC) -std=c++11 `mpic++ -showme:compile` -lmpi_cxx -lmpi -lboost_serialization-mt -lboost_mpi-mt $^ -o $@
-
-test_mpi: test_mpi.cc statistics.o
-	$(CC) -std=c++11 `mpic++ -showme:compile` -lmpi_cxx -lmpi -lboost_serialization-mt -lboost_mpi-mt $^ -o $@
-
-$(EXEC):
 	$(CC) $(CFLAGS) $^ -o $@
+
+kuramoto_mpi: kuramoto_mpi.o graph.o statistics.o
+	$(CC) -std=c++11 `mpic++ -showme:link` -lboost_serialization-mt -lboost_mpi-mt $^ -o $@
 
 -include $(DEPS)
 

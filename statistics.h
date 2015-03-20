@@ -1,22 +1,16 @@
 #pragma once
-
-#include <boost/mpi/collectives/reduce.hpp>
-#include <boost/mpi/communicator.hpp>
-#include <boost/mpi/environment.hpp>
-#include <algorithm>
-#include <boost/serialization/string.hpp>
-#include <boost/iterator/counting_iterator.hpp>
-#include <boost/lexical_cast.hpp>
-#include <numeric>
+#include <iostream>
 
 class Statistics {
  public:
   Statistics();
- Statistics(size_t sample_number, double sample_weight, double sum, double quadratic_sum,
-	    double cubic_sum, double fourth_power_sum, double min,
-	    double max) : sample_number_(sample_number), sample_weight_(sample_weight),
-    sum_(sum), quadratic_sum_(quadratic_sum), cubic_sum_(cubic_sum), fourth_power_sum_(fourth_power_sum),
-    min_(min), max_(max) {}
+  
+ Statistics(size_t sample_number, double sample_weight, double sum,
+	    double quadratic_sum, double cubic_sum, double fourth_power_sum,
+	    double min, double max) : sample_number_(sample_number),
+    sample_weight_(sample_weight), sum_(sum), quadratic_sum_(quadratic_sum),
+    cubic_sum_(cubic_sum), fourth_power_sum_(fourth_power_sum), min_(min),
+    max_(max) {}
 
   size_t samples() const;
   double weighted_sum() const;
@@ -47,8 +41,6 @@ class Statistics {
       add(*begin, *wbegin);
   }
 
-  //  friend class boost::serialization::access;
-
   template <class Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
@@ -67,8 +59,3 @@ class Statistics {
   double sum_, quadratic_sum_, cubic_sum_, fourth_power_sum_;
   double min_, max_;
 };
-
-namespace boost { namespace mpi {
-  template <>
-  struct is_mpi_datatype<Statistics> : public mpl::true_ { };
-} }

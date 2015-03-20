@@ -12,8 +12,16 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <iostream>
+#include <iomanip>
 #include <Eigen/Dense>
+
 #include <boost/mpi.hpp>
+#include <boost/mpi/collectives/reduce.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi/environment.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "graph.h"
 #include "variates.h"
@@ -25,6 +33,15 @@ typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
 
 namespace mpi = boost::mpi;
 using namespace std;
+
+namespace boost { namespace mpi {
+        template <>
+        struct is_mpi_datatype<Statistics> : public mpl::true_ { };
+    } }
+
+std::ostream& operator<<(std::ostream& out, const Statistics& s) {
+    return out << setprecision(6) << s.mean() << '\t' << s.stddev() << '\t' << s.variance();
+}
 
 template <typename Iterable>
 inline void elementwise_add(Iterable& in, Iterable& out) {
@@ -66,8 +83,7 @@ paths(Graph& G, Distribution& dist, const double alpha, const double a, const do
 
     vector<Statistics> stats(nsteps+1);
 
-    int thread_seed = seed + omp_get_thread_num();
-    mt19937 rng(thread_seed);
+    mt19937 rng(seed);
     uniform_real_distribution<> runif(-M_PI, M_PI);
     
     for (size_t j=0; j < npaths; ++j) {
@@ -97,21 +113,22 @@ paths(Graph& G, Distribution& dist, const double alpha, const double a, const do
             }
             stats[k].add(order_param(theta));
         }
-
-        return stats;
     }
+
+    return stats;
 }
 
 int main(int argc, char const *argv[]) {
-    int seed      = argc > 1 ? atol(argv[1]) : 1234;
-    int npaths    = argc > 2 ? atoi(argv[2]) : 1000;
-    int nsteps    = argc > 3 ? atoi(argv[3]) : 5000;
-    double alpha  = argc > 4 ? atof(argv[4]) : 1.7; // stability
-    double lambda = argc > 5 ? atof(argv[5]) : 1.0; // tempering
-    double sigma  = argc > 6 ? atof(argv[6]) : 1.0; // diffusivity
-    double K      = argc > 7 ? atof(argv[7]) : 0.8; // global coupling
-    double max_t  = argc > 8 ? atof(argv[8]) : 30.0; // maximum time
-    string filename = "graphs.g6";
+    const char *graphfile = argc > 1  ? argv[1]: "graphs.g6";
+    uint32_t ngraphs      = argc > 2  ? atol(argv[2])  : 1;
+    uint32_t seed         = argc > 3  ? atol(argv[3])  : 1234;
+    uint32_t npaths       = argc > 4  ? atoi(argv[4])  : 1000;
+    uint32_t nsteps       = argc > 5  ? atoi(argv[5])  : 5000;
+    double alpha          = argc > 6  ? atof(argv[6])  : 1.7; // stability
+    double lambda         = argc > 7  ? atof(argv[7])  : 1.0; // tempering
+    double sigma          = argc > 8  ? atof(argv[8])  : 0.1; // diffusivity
+    double K              = argc > 9  ? atof(argv[9])  : 0.8; // global coupling
+    double max_t          = argc > 10 ? atof(argv[10]) : 30.0; // maximum time
     
     double dt = max_t/nsteps;
     double a = 0.5*alpha*pow(sigma,2.0)/(tgamma(1-alpha)*cos(M_PI*alpha/2));
@@ -125,29 +142,40 @@ int main(int argc, char const *argv[]) {
     mpi::communicator world;
 
     seed += world.rank();
-    npaths = npaths / world.size();
+    int npaths_rank = npaths / world.size();
     
-    ifstream graphfile(filename);
+    ifstream infile(graphfile);
     string line;
-    while (getline(graphfile, line)) {
+    while (getline(infile, line))
+    {
         Graph G(line);
         vector<Statistics> stats;
+        K = (double) G.size();
+        
         if (alpha > 1.999) {
-            stats = paths(G, rnorm, alpha, a, b, K, max_t, nsteps, npaths, seed);
+            stats = paths(G, rnorm, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
         } else {
-            stats = paths(G, rtstable, alpha, a, b, K, max_t, nsteps, npaths, seed);
+            stats = paths(G, rtstable, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
         }
-        elementwise_add(stats, order_stats);
+        
+        if (world.rank() == 0) {
+            mpi::reduce(world, stats, order_stats, std::plus<Statistics>(), 0);
+        } else {
+            mpi::reduce(world, stats, std::plus<Statistics>(), 0);
+        }
     }
     
-    setbuf(stdout, NULL);
-    printf("{");
-    size_t i;
-    for (i = 0; i < order_stats.size() - 1; ++i)
-        printf("{%.6f, %.6f, %.6f, %.6f},", i*dt, order_stats[i].mean(),
-               order_stats[i].stddev(), order_stats[i].variance());
-    printf("{%.6f, %.6f, %.6f, %.6f}}\n", i*dt, order_stats[i].mean(),
-           order_stats[i].stddev(), order_stats[i].variance());
+    if (world.rank() == 0) {
+        cout << '"' << graphfile << " ngraphs:" << ngraphs << " npaths:"<< npaths_rank * world.size();
+        cout << " nsteps:" << nsteps;
+        cout << " alpha:" << alpha << " lambda:" << lambda << " sigma:" << sigma;
+        cout << " K:" << K << " seed:" << seed << '"' << endl; 
+        cout << setiosflags(ios::fixed);
+        for (size_t i = 0; i < order_stats.size(); ++i) {
+            cout << setw(8) << setfill(' ') << setprecision(4) << i*dt << '\t'; 
+            cout << order_stats[i] << endl;
+        }
+    }
     
     return 0;
 }
