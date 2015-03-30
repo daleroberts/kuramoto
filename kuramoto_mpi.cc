@@ -61,14 +61,14 @@ inline double mod2pi(double theta) {
 template <typename Derived>
 inline double order_param(const Eigen::MatrixBase<Derived>& theta) {
     size_t N = theta.size();
-    
+
     double sum_real = 0.0;
     double sum_complex = 0.0;
     for (size_t j = 0; j < N; j++) {
         sum_real += cos(theta(j));
         sum_complex += sin(theta(j));
     }
-    
+
     return sqrt(sum_real*sum_real + sum_complex*sum_complex)/N;
 }
 
@@ -85,28 +85,28 @@ paths(Graph& G, Distribution& dist, const double alpha, const double a, const do
 
     mt19937 rng(seed);
     uniform_real_distribution<> runif(-M_PI, M_PI);
-    
+
     for (size_t j=0; j < npaths; ++j) {
         Vector theta(N);
 
         // set initial condition
         for (size_t i = 0; i < N; ++i)
             theta(i) = mod2pi(runif(rng));
-       
+
         stats[0].add(order_param(theta));
-       
+
         double xi, drift;
 
         for (size_t k = 0; k <= nsteps; k++) {
             for (size_t i = 0; i < N; i++) {
                 // simulate a tempered stable random variable
                 xi = dist(rng);
-               
+
                 // calculate the drift
                 drift = 0;
                 for (auto &j: G.neighbours(i))
                     drift -= K/N*sin(theta(i) - theta(j));
-               
+
                 // increment process
                 theta(i) += drift*dt + xi;
                 theta(i) = mod2pi(theta(i));
@@ -129,13 +129,14 @@ int main(int argc, char const *argv[]) {
     double sigma          = argc > 8  ? atof(argv[8])  : 0.1; // diffusivity
     double K              = argc > 9  ? atof(argv[9])  : 0.8; // global coupling
     double max_t          = argc > 10 ? atof(argv[10]) : 30.0; // maximum time
-    
+
     double dt = max_t/nsteps;
     double a = 0.5*alpha*pow(sigma,2.0)/(tgamma(1-alpha)*cos(M_PI*alpha/2));
     double b = lambda;
 
     vector<Statistics> order_stats(nsteps+1);
     TemperedStableDistribution rtstable(alpha, dt*a, b, 1.1);
+    StableDistribution rstable(alpha, dt*a);
     NormalDistribution rnorm(0, dt*pow(sigma, 2));
 
     mpi::environment env;
@@ -143,7 +144,7 @@ int main(int argc, char const *argv[]) {
 
     seed += world.rank();
     int npaths_rank = npaths / world.size();
-    
+
     ifstream infile(graphfile);
     string line;
     while (getline(infile, line))
@@ -151,31 +152,35 @@ int main(int argc, char const *argv[]) {
         Graph G(line);
         vector<Statistics> stats;
         K = (double) G.size();
-        
+
         if (alpha > 1.999) {
             stats = paths(G, rnorm, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
         } else {
-            stats = paths(G, rtstable, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
+            if (lambda < 0.01) {
+                stats = paths(G, rstable, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
+            } else {
+                stats = paths(G, rtstable, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
+            }
         }
-        
+
         if (world.rank() == 0) {
             mpi::reduce(world, stats, order_stats, std::plus<Statistics>(), 0);
         } else {
             mpi::reduce(world, stats, std::plus<Statistics>(), 0);
         }
     }
-    
+
     if (world.rank() == 0) {
         cout << '"' << graphfile << " ngraphs:" << ngraphs << " npaths:"<< npaths_rank * world.size();
         cout << " nsteps:" << nsteps;
         cout << " alpha:" << alpha << " lambda:" << lambda << " sigma:" << sigma;
-        cout << " K:" << K << " seed:" << seed << '"' << endl; 
+        cout << " K:" << K << " seed:" << seed << '"' << endl;
         cout << setiosflags(ios::fixed);
         for (size_t i = 0; i < order_stats.size(); ++i) {
-            cout << setw(8) << setfill(' ') << setprecision(4) << i*dt << '\t'; 
+            cout << setw(8) << setfill(' ') << setprecision(4) << i*dt << '\t';
             cout << order_stats[i] << endl;
         }
     }
-    
+
     return 0;
 }
