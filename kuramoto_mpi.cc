@@ -156,7 +156,7 @@ int main(int argc, char const *argv[]) {
         if (alpha > 1.999) {
             stats = paths(G, rnorm, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
         } else {
-            if (lambda < 0.01) {
+            if (lambda < 0.001) {
                 stats = paths(G, rstable, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
             } else {
                 stats = paths(G, rtstable, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
