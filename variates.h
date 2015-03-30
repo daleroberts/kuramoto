@@ -15,13 +15,13 @@ class StableDistribution
     _factor = pow(-a*tgamma(-alpha)*cos(M_PI_2*alpha), 1./alpha);
     _theta = atan(tan(M_PI_2*alpha));
   }
-    
+
   double alpha() const
   { return _alpha; }
-    
+
   double a() const
   { return _a; }
-    
+
   template<class _UniformRandomNumberGenerator>
     double
     operator()(_UniformRandomNumberGenerator& urng) {
@@ -32,7 +32,7 @@ class StableDistribution
       pow(cos((1-_alpha)*U - _theta)/E,(1-_alpha)/_alpha);
     return _factor * X;
   }
-    
+
  private:
   double _alpha;
   double _a;
@@ -52,16 +52,16 @@ class TemperedStableDistribution
                                const double& c = double(1.1))
     : _alpha(alpha), _a(a), _b(b), _c(c), _rstable(alpha, a), _runif(0,1)
     { }
-    
+
   double alpha() const
   { return _alpha; }
-    
+
   double a() const
   { return _a; }
-    
+
   double b() const
   { return _b; }
-    
+
   template<class _UniformRandomNumberGenerator>
     double
     operator()(_UniformRandomNumberGenerator& urng) {
@@ -81,7 +81,7 @@ class TemperedStableDistribution
       return V + tgamma(1-_alpha)*_a*pow(_b, _alpha-1.);
     }
   }
-    
+
  private:
   double _alpha;
   double _a;
