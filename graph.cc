@@ -70,11 +70,7 @@ Graph::nodes(void) {
 
 vector<node_t>
 Graph::neighbours(const node_t i) {
-    vector<node_t> v;
-    for (auto &node : _adj[i])
-        v.push_back(node);
-    sa::sort(v);
-    return v;
+    return _adj[i];
 }
 
 void
