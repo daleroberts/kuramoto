@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#PBS -P v10
+#PBS -P u46
 #PBS -q normal
 #PBS -l walltime=10:00:00
 #PBS -l ncpus=992
@@ -35,7 +35,8 @@ perl -pi -e 's/\r\n|\n|\r/\n/g' $INPUT
 # reverse simulations
 mv $INPUT params.old
 head -1 params.old > $INPUT
-cat params.old | sed 1d | tail -r >> $INPUT
+#cat params.old | sed 1d | tail -r >> $INPUT
+cat params.old | sed 1d | tac >> $INPUT
 rm params.old
 
 sed 1d $INPUT | while read i graphfile seed ngraphs npaths nsteps alpha lambda sigma K max_t outfile

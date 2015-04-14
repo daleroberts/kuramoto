@@ -1,7 +1,7 @@
 BC?=release
-CC=g++-4.9
+CC=g++
 SHELL=/bin/bash
-CFLAGS=-Wall -fopenmp -lm -std=c++11 -I. -I/usr/local/include/eigen3
+CFLAGS=-Wall -lm -std=c++11 -I. -I${HOME}/.local/include
  
 ifeq ($(BC),debug)
 	CFLAGS += -g3
@@ -11,16 +11,15 @@ endif
 
 OBJS=$(patsubst %.cc,%.o,$(wildcard *.cc))
 DEPS=$(OBJS:.o=.d)
+EXEC=kuramoto_mpi kuramoto
 
-EXEC=kuramoto_mpi
-
-all: kuramoto_mpi kuramoto
+all: $(EXEC)
 
 kuramoto: kuramoto.o graph.o statistics.o
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) -fopenmp $^ -o $@
 
 kuramoto_mpi: kuramoto_mpi.o graph.o statistics.o
-	$(CC) -std=c++11 `mpic++ -showme:link` -lboost_serialization-mt -lboost_mpi-mt $^ -o $@
+	$(CC) -L${HOME}/.local/lib `mpic++ -showme:link` -lboost_serialization -lboost_mpi $^ -o $@
 
 -include $(DEPS)
 
