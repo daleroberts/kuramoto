@@ -99,6 +99,14 @@ Graph::has_node(const node_t i) {
     return _adj.count(i) > 0;
 }
 
+size_t
+Graph::max_degree(void) {
+    size_t maximum = 1;
+    for (auto &kv: _adj)
+        maximum = std::max(kv.second.size(), maximum);
+    return maximum;
+}
+
 vector<int>
 Graph::graph6_to_data(string s) {
     vector<int> v;

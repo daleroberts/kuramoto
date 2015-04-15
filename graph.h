@@ -11,6 +11,7 @@ class Graph {
     Graph(const std::string &s);
 
     size_t size();
+    size_t max_degree();
     std::vector<node_t> nodes();
     std::vector<node_t> neighbours(const node_t i);
     void add_nodes_from(std::vector<node_t> nodes);

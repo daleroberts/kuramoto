@@ -18,7 +18,6 @@
 
 #include "graph.h"
 #include "variates.h"
-#include "process.h"
 #include "statistics.h"
 
 #if defined(_OPENMP)

@@ -14,7 +14,6 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
-#include <Eigen/Dense>
 
 #include <boost/mpi.hpp>
 #include <boost/mpi/collectives/reduce.hpp>
@@ -25,22 +24,18 @@
 
 #include "graph.h"
 #include "variates.h"
-#include "process.h"
 #include "statistics.h"
-
-typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Matrix;
-typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
 
 namespace mpi = boost::mpi;
 using namespace std;
 
 namespace boost { namespace mpi {
         template <>
-        struct is_mpi_datatype<Statistics> : public mpl::true_ { };
+        struct is_mpi_datatype<Statistics> : public mpl::true_ {};
     } }
 
 std::ostream& operator<<(std::ostream& out, const Statistics& s) {
-    return out << setprecision(6) << s.mean() << '\t' << s.stddev() << '\t' << s.variance();
+    return out << setprecision(6) << s.mean() << '\t' << s.stddev();
 }
 
 template <typename Iterable>
@@ -58,15 +53,14 @@ inline double mod2pi(double theta) {
     return theta;
 }
 
-template <typename Derived>
-inline double order_param(const Eigen::MatrixBase<Derived>& theta) {
+inline double order_param(const vector<double>& theta) {
     size_t N = theta.size();
 
     double sum_real = 0.0;
     double sum_complex = 0.0;
     for (size_t j = 0; j < N; j++) {
-        sum_real += cos(theta(j));
-        sum_complex += sin(theta(j));
+        sum_real += cos(theta[j]);
+        sum_complex += sin(theta[j]);
     }
 
     return sqrt(sum_real*sum_real + sum_complex*sum_complex)/N;
@@ -74,9 +68,9 @@ inline double order_param(const Eigen::MatrixBase<Derived>& theta) {
 
 template <typename Distribution>
 vector<Statistics>
-paths(Graph& G, Distribution& dist, const double alpha, const double a, const double b,
-      const double K, const double max_t, const uint32_t nsteps,
-      const uint32_t npaths, const uint32_t seed)
+paths(Graph& G, Distribution& dist, const double alpha, const double a,
+      const double b, const double kappa, const double max_t,
+      const uint32_t nsteps, const uint32_t npaths, const uint32_t seed)
 {
     double dt = max_t/nsteps;
     auto N = G.size();
@@ -87,11 +81,11 @@ paths(Graph& G, Distribution& dist, const double alpha, const double a, const do
     uniform_real_distribution<> runif(-M_PI, M_PI);
 
     for (size_t j=0; j < npaths; ++j) {
-        Vector theta(N);
+        vector<double> theta(N);
 
         // set initial condition
         for (size_t i = 0; i < N; ++i)
-            theta(i) = runif(rng);
+            theta[i] = runif(rng);
 
         stats[0].add(order_param(theta));
 
@@ -105,14 +99,13 @@ paths(Graph& G, Distribution& dist, const double alpha, const double a, const do
                 // calculate the drift
                 drift = 0;
                 for (auto &j: G.neighbours(i))
-                    drift -= K/N*sin(theta(i) - theta(j));
+                    drift -= kappa*sin(theta[i] - theta[j]);
 
                 // increment process
-                theta(i) += drift*dt + xi;
+                theta[i] += drift*dt + xi;
             }
             stats[k].add(order_param(theta));
         }
-
     }
 
     return stats;
@@ -127,8 +120,8 @@ int main(int argc, char const *argv[]) {
     double alpha          = argc > 6  ? atof(argv[6])  : 2.0; // stability
     double lambda         = argc > 7  ? atof(argv[7])  : 0.0; // tempering
     double sigma          = argc > 8  ? atof(argv[8])  : 0.5; // diffusivity
-    double K              = argc > 9  ? atof(argv[9])  : 1.0; // global coupling
-    double max_t          = argc > 10 ? atof(argv[10]) : 30.0; // maximum time
+    double K              = argc > 9  ? atof(argv[9])  : 1.0; // coupling
+    double max_t          = argc > 10 ? atof(argv[10]) : 30.0;
     double c              = argc > 11 ? atof(argv[11]) : 1.1;
 
     double dt = max_t/nsteps;
@@ -136,6 +129,7 @@ int main(int argc, char const *argv[]) {
     double b = lambda;
 
     vector<Statistics> order_stats(nsteps+1);
+
     TemperedStableDistribution rtstable(alpha, dt*a, b, c);
     StableDistribution rstable(alpha, dt*a);
     NormalDistribution rnorm(0, dt*pow(sigma, 2));
@@ -147,22 +141,35 @@ int main(int argc, char const *argv[]) {
     int npaths_rank = npaths / world.size();
     ngraphs = 0;
 
+    bool first_graph = true;
+    double kappa;
+
     ifstream infile(graphfile);
     string line;
     while (getline(infile, line))
     {
         Graph G(line);
         vector<Statistics> stats;
-        K = (double) G.size();
         ngraphs++;
 
+        if (first_graph) {
+            K = (double) G.max_degree();
+            first_graph = false;
+        }
+
+        kappa = K / G.max_degree();
+        //kappa = 1.0;
+
         if (alpha > 1.999) {
-            stats = paths(G, rnorm, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
+            stats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps,
+                          npaths_rank, seed);
         } else {
             if (lambda < 0.001) {
-                stats = paths(G, rstable, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
+                stats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps,
+                              npaths_rank, seed);
             } else {
-                stats = paths(G, rtstable, alpha, a, b, K, max_t, nsteps, npaths_rank, seed);
+                stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps,
+                              npaths_rank, seed);
             }
         }
 
@@ -174,14 +181,23 @@ int main(int argc, char const *argv[]) {
     }
 
     if (world.rank() == 0) {
-        cout << '"' << graphfile << " ngraphs:" << ngraphs << " npaths:"<< npaths_rank * world.size();
+        // header
+        cout << '"' << graphfile;
+        cout << " ngraphs:" << ngraphs;
+        cout << " npaths:"<< npaths_rank * world.size();
         cout << " nsteps:" << nsteps;
-        cout << " alpha:" << alpha << " lambda:" << lambda << " sigma:" << sigma;
-        cout << " K:" << K << " seed:" << seed << '"' << endl;
+        cout << " alpha:" << alpha;
+        cout << " lambda:" << lambda;
+        cout << " sigma:" << sigma;
+        cout << " K:" << K;
+        cout << " seed:" << seed;
+        cout << '"' << endl;
+
+        // rows
         cout << setiosflags(ios::fixed);
         for (size_t i = 0; i < order_stats.size(); ++i) {
-            cout << setw(8) << setfill(' ') << setprecision(4) << i*dt << '\t';
-            cout << order_stats[i] << endl;
+            cout << setw(8) << setfill(' ') << setprecision(4);
+            cout << i*dt << '\t'<< order_stats[i] << endl;
         }
     }
 

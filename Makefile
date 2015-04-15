@@ -1,7 +1,7 @@
 BC?=release
 CC=g++
 SHELL=/bin/bash
-CFLAGS=-Wall -lm -std=c++11 -I. -I${HOME}/.local/include
+CFLAGS=-Wall -lm -std=c++11 -fopenmp -I. -I${HOME}/.local/include
  
 ifeq ($(BC),debug)
 	CFLAGS += -g3
@@ -11,12 +11,15 @@ endif
 
 OBJS=$(patsubst %.cc,%.o,$(wildcard *.cc))
 DEPS=$(OBJS:.o=.d)
-EXEC=kuramoto_mpi kuramoto
+EXEC=kuramoto_mpi kuramoto kuramoto_onepath
 
 all: $(EXEC)
 
 kuramoto: kuramoto.o graph.o statistics.o
-	$(CC) $(CFLAGS) -fopenmp $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@
+
+kuramoto_onepath: kuramoto_onepath.o graph.o statistics.o
+	$(CC) $(CFLAGS) $^ -o $@
 
 kuramoto_mpi: kuramoto_mpi.o graph.o statistics.o
 	$(CC) -L${HOME}/.local/lib `mpic++ -showme:link` -lboost_serialization -lboost_mpi $^ -o $@
@@ -27,4 +30,4 @@ kuramoto_mpi: kuramoto_mpi.o graph.o statistics.o
 	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
 clean:
-	rm -fr $(EXEC) $(OBJS) $(DEPS)
+	rm -fr $(EXEC) $(OBJS) $(DEPS) *.o*
