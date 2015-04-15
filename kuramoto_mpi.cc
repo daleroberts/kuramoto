@@ -115,13 +115,13 @@ int main(int argc, char const *argv[]) {
     const char *graphfile = argc > 1  ? argv[1]: "graphs.g6";
     uint32_t ngraphs      = argc > 2  ? atol(argv[2])  : 1;
     uint32_t seed         = argc > 3  ? atol(argv[3])  : 0;
-    uint32_t npaths       = argc > 4  ? atoi(argv[4])  : 1000;
-    uint32_t nsteps       = argc > 5  ? atoi(argv[5])  : 5000;
+    uint32_t npaths       = argc > 4  ? atoi(argv[4])  : 10;
+    uint32_t nsteps       = argc > 5  ? atoi(argv[5])  : 5;
     double alpha          = argc > 6  ? atof(argv[6])  : 2.0; // stability
     double lambda         = argc > 7  ? atof(argv[7])  : 0.0; // tempering
     double sigma          = argc > 8  ? atof(argv[8])  : 0.5; // diffusivity
     double K              = argc > 9  ? atof(argv[9])  : 1.0; // coupling
-    double max_t          = argc > 10 ? atof(argv[10]) : 30.0;
+    double max_t          = argc > 10 ? atof(argv[10]) : 2.0;
     double c              = argc > 11 ? atof(argv[11]) : 1.1;
 
     double dt = max_t/nsteps;
@@ -157,8 +157,8 @@ int main(int argc, char const *argv[]) {
             first_graph = false;
         }
 
-        kappa = K / G.max_degree();
-        //kappa = 1.0;
+        //kappa = K / G.max_degree();
+        kappa = 1.0;
 
         if (alpha > 1.999) {
             stats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps,
@@ -189,7 +189,7 @@ int main(int argc, char const *argv[]) {
         cout << " alpha:" << alpha;
         cout << " lambda:" << lambda;
         cout << " sigma:" << sigma;
-        cout << " K:" << K;
+        cout << " kappa:" << kappa;
         cout << " seed:" << seed;
         cout << '"' << endl;
 

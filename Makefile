@@ -1,33 +1,32 @@
-BC?=release
-CC=g++
-SHELL=/bin/bash
-CFLAGS=-Wall -lm -std=c++11 -fopenmp -I. -I${HOME}/.local/include
- 
-ifeq ($(BC),debug)
-	CFLAGS += -g3
+# detect compiler
+ifeq ($(shell which icpc &>/dev/null; echo $$?),0)
+CXX=icpc
+CXXFLAGS=-Wall -std=c++11 -O2 -lboost_serialization-mt -lboost_mpi-mt -L/apps/boost/1.57.0/lib
 else
-	CFLAGS += -O2
+CXX=g++
+CXXFLAGS=-Wall -std=c++11 -O2 -lm -lboost_serialization-mt -lboost_mpi-mt -L/apps/boost/1.57.0/lib
 endif
 
 OBJS=$(patsubst %.cc,%.o,$(wildcard *.cc))
 DEPS=$(OBJS:.o=.d)
-EXEC=kuramoto_mpi kuramoto kuramoto_onepath
+EXEC=kuramoto_mpi
 
-all: $(EXEC)
+all: kuramoto_mpi
 
-kuramoto: kuramoto.o graph.o statistics.o
-	$(CC) $(CFLAGS) $^ -o $@
+kuramoto_omp: kuramoto_omp.o graph.o statistics.o
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
 kuramoto_onepath: kuramoto_onepath.o graph.o statistics.o
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
 kuramoto_mpi: kuramoto_mpi.o graph.o statistics.o
-	$(CC) -L${HOME}/.local/lib `mpic++ -showme:link` -lboost_serialization -lboost_mpi $^ -o $@
+	$(CXX) $(CXXFLAGS) `mpic++ -showme:link` $^ -o $@
 
 -include $(DEPS)
 
 %.o: %.cc
-	$(CC) $(CFLAGS) -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@
 
 clean:
-	rm -fr $(EXEC) $(OBJS) $(DEPS) *.o*
+	@find . -executable -type f -delete
+	@rm -fr $(OBJS) $(DEPS) *.o*
