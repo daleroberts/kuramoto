@@ -35,8 +35,8 @@ perl -pi -e 's/\r\n|\n|\r/\n/g' $INPUT
 # reverse simulations
 mv $INPUT params.old
 head -1 params.old > $INPUT
-#cat params.old | sed 1d | tail -r >> $INPUT
-cat params.old | sed 1d | tac >> $INPUT
+cat params.old | sed 1d | tail -r >> $INPUT
+#cat params.old | sed 1d | tac >> $INPUT
 rm params.old
 
 sed 1d $INPUT | while read i graphfile seed ngraphs npaths nsteps alpha lambda sigma K max_t outfile
@@ -48,7 +48,7 @@ do
     [ ! -f $graphfile ] && { echo "$graphfile file not found"; exit 99; }
 
     if [ ! -f "$outfile.txt" ]; then
-    	mpirun -bind-to-none -stdin none -np $PBS_NCPUS ../kuramoto_mpi $graphfile $M $seed $npaths $nsteps $alpha $lambda $sigma $K $max_t > "$outfile.txt"
+    	mpirun -stdin none -np 16  ../kuramoto_mpi $graphfile $M $seed $npaths $nsteps $alpha $lambda $sigma $K $max_t > "$outfile.txt"
     fi
 
     if [ ! -f "$outfile.png" ]; then
