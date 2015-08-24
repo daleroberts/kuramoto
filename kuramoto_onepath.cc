@@ -42,13 +42,6 @@ inline void elementwise_add(Iterable& in, Iterable& out) {
     el += *(in_iter++);
 }
 
-#pragma omp declare reduction(+ : Vector : omp_out += \
-                              omp_in) initializer(omp_priv(omp_orig))
-
-#pragma omp declare reduction(+ : std::vector <                                \
-                              Statistics > : elementwise_add(omp_in, omp_out)) \
-                                               initializer(omp_priv(omp_orig))
-
 using namespace std;
 
 inline double mod2pi(double theta) {
@@ -90,7 +83,7 @@ void one_path(Graph& G,
   uniform_real_distribution<> runif(-M_PI, M_PI);
 
   Vector theta(N);
-  Statistics xis;
+  Vector theta_(N);
 
   // set initial condition
   for (size_t i = 0; i < N; ++i)
@@ -104,29 +97,27 @@ void one_path(Graph& G,
   double xi, drift;
 
   for (size_t k = 0; k <= nsteps; k++) {
+      
     for (size_t i = 0; i < N; i++) {
-      // sample from distribution
-      xi = dist(rng);
-      xis.add(xi);
-
-      // calculate the drift
       drift = 0;
       for (auto& j : G.neighbours(i))
         drift -= K / N * sin(theta(i) - theta(j));
 
-      // increment process
-      theta(i) += drift * dt + xi;
+      xi = dist(rng);
+      theta_(i) += drift * dt + xi;
     }
+
+    theta = theta_;
 
     printf(",{%.6f", theta(0));
     for (size_t i = 1; i < N; ++i)
       printf(",%.6f", theta(i));
     printf("}");
+    
   }
 
   printf("}\n");
 
-  printf("%f\n", xis.mean());
 }
 
 int main(int argc, char const* argv[]) {
@@ -149,7 +140,7 @@ int main(int argc, char const* argv[]) {
 
   TemperedStableDistribution rtstable(alpha, dt * a, b, c);
   StableDistribution rstable(alpha, dt * a);
-  NormalDistribution rnorm(0, dt * pow(sigma, 2));
+  NormalDistribution rnorm(0, dt * pow(sigma, 2)/2); // scaled!
 
   ifstream infile(graphfile);
   string line;

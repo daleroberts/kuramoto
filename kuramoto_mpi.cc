@@ -89,6 +89,7 @@ vector<Statistics> paths(Graph& G,
 
   for (size_t j = 0; j < npaths; ++j) {
     vector<double> theta(N);
+    vector<double> theta_(N);
 
     // set initial condition
     for (size_t i = 0; i < N; ++i)
@@ -100,17 +101,14 @@ vector<Statistics> paths(Graph& G,
 
     for (size_t k = 0; k <= nsteps; k++) {
       for (size_t i = 0; i < N; i++) {
-        // simulate a tempered stable random variable
-        xi = dist(rng);
-
-        // calculate the drift
         drift = 0;
         for (auto& j : G.neighbours(i))
           drift -= kappa * sin(theta[i] - theta[j]);
 
-        // increment process
-        theta[i] += drift * dt + xi;
+        xi = dist(rng);
+        theta_[i] += drift * dt + xi;
       }
+      theta = theta_;
       stats[k].add(order_param(theta));
     }
   }
