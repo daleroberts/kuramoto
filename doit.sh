@@ -11,9 +11,8 @@
 NCPUS=${PBS_NCPUS-12}
 
 if [ "`type -t module`" = 'function' ]; then
-    module load openmpi/1.8.4
+    module load openmpi/1.8.7
     module load boost/1.57.0
-    module load gnuplot
 fi
 
 cd ~/src/kuramoto
@@ -52,11 +51,6 @@ do
     if [ ! -f "$outfile.txt" ]; then
     	mpirun -stdin none -np $NCPUS ../kuramoto_mpi $graphfile $M $seed $npaths $nsteps $alpha $lambda $sigma $K $max_t > "$outfile.txt"
     fi
-
-    #if [ ! -f "$outfile.png" ]; then
-    #	export outfile=$outfile
-    #	gnuplot -e "outfile='$outfile.png'" -e "infile='$outfile.txt'" ../plot.gnuplot
-    #fi
 done
 
 IFS=$OLDIFS
