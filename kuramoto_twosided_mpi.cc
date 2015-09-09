@@ -141,7 +141,7 @@ int main(int argc, char const* argv[]) {
 
   TemperedStableDistribution rtstable(alpha, dt * a, b, c);
   StableDistribution rstable(alpha, dt * a);
-  NormalDistribution rnorm(0, dt * pow(sigma, 2));
+  NormalDistribution rnorm(0, dt * pow(sigma, 2)*0.5*(1+pow(beta,2)));
 
   mpi::environment env;
   mpi::communicator world;

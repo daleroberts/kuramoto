@@ -2,21 +2,33 @@
 
 int main(int argc, char const* argv[]) {
   double alpha = argc > 1 ? atof(argv[1]) : 1.6;
-  double beta = argc > 2 ? atof(argv[2]) : 0.0;
-  double sigma = argc > 3 ? atof(argv[3]) : 2.0;
-  int seed = argc > 4 ? atof(argv[4]) : 1231;
+  double a = argc > 2 ? atof(argv[2]) : 1.0;
+  int J = argc > 3 ? atoi(argv[3]) : 100;
+  int N = argc > 4 ? atoi(argv[4]) : 1000;
+  int seed = argc > 5 ? atof(argv[5]) : 1231;
+  int sim = argc > 6 ? atoi(argv[6]) : 0;
 
-  double a = 0.5 * alpha * pow(sigma, 2.0) /
-             (tgamma(1 - alpha) * cos(M_PI * alpha / 2));
 
   mt19937 rng(seed);
-  StableDistribution dist(alpha, a);
 
-  double xi;
-  for (int i = 0; i < 10000; i++) {
-    xi = ((1+beta)*dist(rng)-(1-beta)*dist(rng))/2;
-    printf("%.6f\n", xi);
+  if (sim == 0) {
+      double dt = 1.0 / J;
+      StableDistribution dist(alpha, dt*a);
+      double X;
+      for (int i = 0; i < N; i++) {
+          X = 0.0;
+          for (int j = 0; j < J; j++)
+              X += dist(rng);
+          printf("%.4f\n", X);
+      }
+  } else {
+      StableDistribution dist(alpha, a);
+      double X;
+      for (int i = 0; i < N; i++) {
+          X = dist(rng);
+          printf("%.4f\n", X);
+      }
   }
-
+  
   return 0;
 }
