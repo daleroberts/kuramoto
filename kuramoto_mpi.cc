@@ -88,8 +88,8 @@ vector<Statistics> paths(Graph& G,
     uniform_real_distribution<> runif(-M_PI, M_PI);
 
     for (size_t j = 0; j < npaths; ++j) {
-        vector<double> theta  = Vector::Zero(N);
-        vector<double> theta_ = Vector::Zero(N);
+        vector<double> theta(N, 0.);
+        vector<double> theta_(N, 0.);
 
         // set initial condition
         for (size_t i = 0; i < N; ++i)

@@ -3,8 +3,8 @@ ifeq ($(shell which icpc &>/dev/null; echo $$?),0)
 CXX?=icpc
 CXXFLAGS=-Wall -std=c++11 -lboost_serialization-mt -lboost_mpi-mt -L/apps/boost/1.57.0/lib
 else
-CXX?=g++-5
-CXXFLAGS=-Wall -std=c++11 -lm -lboost_serialization-mt -lboost_mpi-mt -L/usr/local/lib -I/usr/local/include/eigen3
+CXX?=g++
+CXXFLAGS=-Wall -std=c++11 -lm -lboost_serialization-mt -lboost_mpi-mt -L/usr/local/lib -I/usr/local/include/eigen3 -L/apps/boost/1.57.0/lib
 endif
 
 OBJS=$(patsubst %.cc,%.o,$(wildcard *.cc))
