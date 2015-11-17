@@ -32,12 +32,13 @@ typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
 using namespace std;
 
 template <typename Iterable>
-inline void elementwise_add(Iterable& in, Iterable& out) {
+inline void elementwise_add(Iterable &in, Iterable &out) {
   auto in_iter = in.begin();
-  for (auto& el : out) el += *(in_iter++);
+  for (auto &el : out)
+    el += *(in_iter++);
 }
 
-#pragma omp declare reduction(+ : Vector : omp_out += \
+#pragma omp declare reduction(+ : Vector : omp_out +=                          \
                               omp_in) initializer(omp_priv(omp_orig))
 
 #pragma omp declare reduction(+ : std::vector <                                \
@@ -45,13 +46,15 @@ inline void elementwise_add(Iterable& in, Iterable& out) {
                                                initializer(omp_priv(omp_orig))
 
 inline double mod2pi(double theta) {
-  while (theta > 2 * M_PI) theta -= 2 * M_PI;
-  while (theta < 0.0) theta += 2 * M_PI;
+  while (theta > 2 * M_PI)
+    theta -= 2 * M_PI;
+  while (theta < 0.0)
+    theta += 2 * M_PI;
   return theta;
 }
 
 template <typename Derived>
-inline double order_param(const Eigen::MatrixBase<Derived>& theta) {
+inline double order_param(const Eigen::MatrixBase<Derived> &theta) {
   size_t N = theta.size();
 
   double sum_real = 0.0;
@@ -65,7 +68,7 @@ inline double order_param(const Eigen::MatrixBase<Derived>& theta) {
 }
 
 template <typename Distribution>
-vector<Statistics> paths(Graph& G, Distribution& dist, const double alpha,
+vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha,
                          const double a, const double b, const double K,
                          const double max_t, const uint32_t nsteps,
                          const uint32_t npaths, const uint32_t seed) {
@@ -85,7 +88,8 @@ vector<Statistics> paths(Graph& G, Distribution& dist, const double alpha,
       Vector theta(N);
 
       // set initial condition
-      for (size_t i = 0; i < N; ++i) theta(i) = runif(rng);
+      for (size_t i = 0; i < N; ++i)
+        theta(i) = runif(rng);
 
       stats[0].add(order_param(theta));
 
@@ -98,7 +102,7 @@ vector<Statistics> paths(Graph& G, Distribution& dist, const double alpha,
 
           // calculate the drift
           drift = 0;
-          for (auto& j : G.neighbours(i))
+          for (auto &j : G.neighbours(i))
             drift -= K / N * sin(theta(i) - theta(j));
 
           // increment process
@@ -113,15 +117,15 @@ vector<Statistics> paths(Graph& G, Distribution& dist, const double alpha,
   return stats;
 }
 
-int main(int argc, char const* argv[]) {
+int main(int argc, char const *argv[]) {
   int seed = argc > 1 ? atol(argv[1]) : 1234;
   int npaths = argc > 2 ? atoi(argv[2]) : 1000;
   int nsteps = argc > 3 ? atoi(argv[3]) : 5000;
-  double alpha = argc > 4 ? atof(argv[4]) : 1.7;   // stability
-  double lambda = argc > 5 ? atof(argv[5]) : 1.0;  // tempering
-  double sigma = argc > 6 ? atof(argv[6]) : 1.0;   // diffusivity
-  double K = argc > 7 ? atof(argv[7]) : 0.8;       // global coupling
-  double max_t = argc > 8 ? atof(argv[8]) : 30.0;  // maximum time
+  double alpha = argc > 4 ? atof(argv[4]) : 1.7;  // stability
+  double lambda = argc > 5 ? atof(argv[5]) : 1.0; // tempering
+  double sigma = argc > 6 ? atof(argv[6]) : 1.0;  // diffusivity
+  double K = argc > 7 ? atof(argv[7]) : 0.8;      // global coupling
+  double max_t = argc > 8 ? atof(argv[8]) : 30.0; // maximum time
   string filename = "graphs.g6";
 
   double dt = max_t / nsteps;
