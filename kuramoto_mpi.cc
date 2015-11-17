@@ -68,50 +68,6 @@ inline double order_param(const vector<double> &theta) {
 }
 
 template <typename Distribution>
-<<<<<<< HEAD
-vector<Statistics> paths(Graph& G,
-                         Distribution& dist,
-                         const double alpha,
-                         const double a,
-                         const double b,
-                         const double kappa,
-                         const double max_t,
-                         const uint32_t nsteps,
-                         const uint32_t npaths,
-                         const uint32_t seed) {
-    double dt = max_t / nsteps;
-    auto N = G.size();
-
-    vector<Statistics> stats(nsteps + 1);
-
-    mt19937 rng(seed);
-    uniform_real_distribution<> runif(-M_PI, M_PI);
-
-    for (size_t j = 0; j < npaths; ++j) {
-        vector<double> theta(N, 0.);
-        vector<double> theta_(N, 0.);
-
-        // set initial condition
-        for (size_t i = 0; i < N; ++i)
-            theta[i] = runif(rng);
-
-        stats[0].add(order_param(theta));
-
-        double xi, drift;
-
-        for (size_t k = 0; k <= nsteps; k++) {
-            for (size_t i = 0; i < N; i++) {
-                drift = 0;
-                for (auto& j : G.neighbours(i))
-                    drift -= kappa * sin(theta[i] - theta[j]);
-
-                xi = dist(rng);
-                theta_[i] += drift * dt + xi;
-            }
-            theta = theta_;
-            stats[k].add(order_param(theta));
-        }
-=======
 vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha,
                          const double a, const double b, const double kappa,
                          const double max_t, const uint32_t nsteps,
@@ -147,7 +103,6 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha,
       }
       theta = theta_;
       stats[k].add(order_param(theta));
->>>>>>> eac6e0f6159f72fffa02d17b8bfa2770075dcae3
     }
   }
 
