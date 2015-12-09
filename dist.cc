@@ -5,20 +5,19 @@
 using namespace std;
 
 int main(int argc, char const *argv[]) {
-  int seed = argc > 1 ? atol(argv[1]) : 1234;
-  double alpha = argc > 2 ? atof(argv[2]) : 1.5;
+  int seed      = argc > 1 ? atol(argv[1]) : 1234;
+  double alpha  = argc > 2 ? atof(argv[2]) : 1.5;
   double lambda = argc > 3 ? atof(argv[3]) : 1.0;
-  double sigma = argc > 4 ? atof(argv[4]) : 5.78115129;
-  double dt = argc > 5 ? atof(argv[5]) : 0.1;
-  int N = argc > 6 ? atof(argv[6]) : 1000;
+  double sigma  = argc > 4 ? atof(argv[4]) : 5.78115129;
+  double dt     = argc > 5 ? atof(argv[5]) : 0.1;
+  int N         = argc > 6 ? atof(argv[6]) : 1000;
 
-  double a = dt * alpha * pow(sigma, 2.0) /
-             (2 * tgamma(1 - alpha) * cos(M_PI * alpha / 2));
+  double a = dt * alpha * pow(sigma, 2.0) / (2 * tgamma(1 - alpha) * cos(M_PI * alpha / 2));
   double b = lambda;
 
   double drift = dt * tgamma(1 - a) * a * pow(b, alpha - 1);
-  double x = qtstable(0.9, alpha, a, b);
-  double c = -drift - x;
+  double x     = qtstable(0.9, alpha, a, b);
+  double c     = -drift - x;
 
   cerr << c << endl;
 

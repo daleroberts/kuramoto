@@ -40,8 +40,7 @@ std::ostream &operator<<(std::ostream &out, const Statistics &s) {
   return out << setprecision(6) << s.mean() << '\t' << s.stddev();
 }
 
-template <typename Iterable>
-inline void elementwise_add(Iterable &in, Iterable &out) {
+template <typename Iterable> inline void elementwise_add(Iterable &in, Iterable &out) {
   auto in_iter = in.begin();
   for (auto &el : out)
     el += *(in_iter++);
@@ -56,8 +55,8 @@ inline double mod2pi(double theta) {
 }
 
 inline double order_param(const vector<double> &theta) {
-  size_t N = theta.size();
-  double sum_real = 0.0;
+  size_t N           = theta.size();
+  double sum_real    = 0.0;
   double sum_complex = 0.0;
   for (size_t j = 0; j < N; j++) {
     sum_real += cos(theta[j]);
@@ -67,12 +66,11 @@ inline double order_param(const vector<double> &theta) {
 }
 
 template <typename Distribution>
-vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha,
-                         const double a, const double b, const double kappa,
-                         const double max_t, const uint32_t nsteps,
-                         const uint32_t npaths, const uint32_t seed) {
+vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const double a,
+                         const double b, const double kappa, const double max_t,
+                         const uint32_t nsteps, const uint32_t npaths, const uint32_t seed) {
   double dt = max_t / nsteps;
-  auto N = G.size();
+  auto N    = G.size();
 
   vector<Statistics> stats(nsteps + 1);
 
@@ -110,22 +108,21 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha,
 
 int main(int argc, char const *argv[]) {
   const char *graphfile = argc > 1 ? argv[1] : "graphs.g6";
-  uint32_t ngraphs = argc > 2 ? atol(argv[2]) : 1;
-  uint32_t seed = argc > 3 ? atol(argv[3]) : 0;
-  uint32_t npaths = argc > 4 ? atoi(argv[4]) : 10;
-  uint32_t nsteps = argc > 5 ? atoi(argv[5]) : 5;
-  double alpha = argc > 6 ? atof(argv[6]) : 1.5;     // stability
-  double lambda = argc > 7 ? atof(argv[7]) : 1.0;    // tempering
-  double sigma = argc > 8 ? atof(argv[8]) : 5.78115; // diffusivity
-  double K = argc > 9 ? atof(argv[9]) : 1.0;         // coupling
-  double max_t = argc > 10 ? atof(argv[10]) : 2.0;
+  uint32_t ngraphs      = argc > 2 ? atol(argv[2]) : 1;
+  uint32_t seed         = argc > 3 ? atol(argv[3]) : 0;
+  uint32_t npaths       = argc > 4 ? atoi(argv[4]) : 10;
+  uint32_t nsteps       = argc > 5 ? atoi(argv[5]) : 5;
+  double alpha          = argc > 6 ? atof(argv[6]) : 1.5;     // stability
+  double lambda         = argc > 7 ? atof(argv[7]) : 1.0;     // tempering
+  double sigma          = argc > 8 ? atof(argv[8]) : 5.78115; // diffusivity
+  double K              = argc > 9 ? atof(argv[9]) : 1.0;     // coupling
+  double max_t          = argc > 10 ? atof(argv[10]) : 2.0;
 
   double dt = max_t / nsteps;
-  double a = 0.5 * alpha * pow(sigma, 2.0) /
-             (tgamma(1 - alpha) * cos(M_PI * alpha / 2));
-  double b = lambda;
-  double d = dt * tgamma(1 - a) * a * pow(b, alpha - 1);
-  double c = -d - qtstable(0.9, alpha, a, b);
+  double a  = 0.5 * alpha * pow(sigma, 2.0) / (tgamma(1 - alpha) * cos(M_PI * alpha / 2));
+  double b  = lambda;
+  double d  = dt * tgamma(1 - a) * a * pow(b, alpha - 1);
+  double c  = -d - qtstable(0.9, alpha, a, b);
 
   vector<Statistics> order_stats(nsteps + 1);
 
@@ -135,10 +132,11 @@ int main(int argc, char const *argv[]) {
 
   mpi::environment env;
   mpi::communicator world;
+  int npaths_rank;
 
-  seed += world.rank();
-  int npaths_rank = npaths / world.size();
-  ngraphs = 0;
+  npaths_rank = npaths / world.size();
+  seed        = seed + world.rank();
+  ngraphs     = 0;
 
   bool first_graph = true;
   double kappa;
@@ -151,22 +149,22 @@ int main(int argc, char const *argv[]) {
     ngraphs++;
 
     if (first_graph) {
-      K = (double)G.max_degree();
+      K           = (double)G.max_degree();
       first_graph = false;
     }
 
     kappa = 1.0;
 
     if (alpha > 1.999) {
-      stats =
-          paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+      // Gaussian noise
+      stats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
     } else {
       if (lambda < 0.001) {
-        stats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps,
-                      npaths_rank, seed);
+        // Stable noise
+        stats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
       } else {
-        stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps,
-                      npaths_rank, seed);
+        // Tempered stable noise
+        stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
       }
     }
 
