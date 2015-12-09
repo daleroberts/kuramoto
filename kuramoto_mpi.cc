@@ -3,6 +3,7 @@
  *
  * Dale Roberts <dale.o.roberts@gmail.com>
  */
+
 #define _USE_MATH_DEFINES
 
 #include <cmath>
@@ -56,14 +57,12 @@ inline double mod2pi(double theta) {
 
 inline double order_param(const vector<double> &theta) {
   size_t N = theta.size();
-
   double sum_real = 0.0;
   double sum_complex = 0.0;
   for (size_t j = 0; j < N; j++) {
     sum_real += cos(theta[j]);
     sum_complex += sin(theta[j]);
   }
-
   return sqrt(sum_real * sum_real + sum_complex * sum_complex) / N;
 }
 
@@ -115,17 +114,18 @@ int main(int argc, char const *argv[]) {
   uint32_t seed = argc > 3 ? atol(argv[3]) : 0;
   uint32_t npaths = argc > 4 ? atoi(argv[4]) : 10;
   uint32_t nsteps = argc > 5 ? atoi(argv[5]) : 5;
-  double alpha = argc > 6 ? atof(argv[6]) : 2.0;  // stability
-  double lambda = argc > 7 ? atof(argv[7]) : 0.0; // tempering
-  double sigma = argc > 8 ? atof(argv[8]) : 0.5;  // diffusivity
-  double K = argc > 9 ? atof(argv[9]) : 1.0;      // coupling
+  double alpha = argc > 6 ? atof(argv[6]) : 1.5;     // stability
+  double lambda = argc > 7 ? atof(argv[7]) : 1.0;    // tempering
+  double sigma = argc > 8 ? atof(argv[8]) : 5.78115; // diffusivity
+  double K = argc > 9 ? atof(argv[9]) : 1.0;         // coupling
   double max_t = argc > 10 ? atof(argv[10]) : 2.0;
-  double c = argc > 11 ? atof(argv[11]) : 1.1;
 
   double dt = max_t / nsteps;
   double a = 0.5 * alpha * pow(sigma, 2.0) /
              (tgamma(1 - alpha) * cos(M_PI * alpha / 2));
   double b = lambda;
+  double d = dt * tgamma(1 - a) * a * pow(b, alpha - 1);
+  double c = -d - qtstable(0.9, alpha, a, b);
 
   vector<Statistics> order_stats(nsteps + 1);
 
