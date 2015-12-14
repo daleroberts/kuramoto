@@ -12,14 +12,14 @@ int main(int argc, char const *argv[]) {
   double dt     = argc > 5 ? atof(argv[5]) : 0.1;
   int N         = argc > 6 ? atof(argv[6]) : 1000;
 
-  double a = dt * alpha * pow(sigma, 2.0) / (2 * tgamma(1 - alpha) * cos(M_PI * alpha / 2));
+  double a = alpha * pow(sigma, 2.0) / (2 * tgamma(1 - alpha) * cos(M_PI * alpha / 2));
   double b = lambda;
 
   double drift = dt * tgamma(1 - a) * a * pow(b, alpha - 1);
-  double x     = qtstable(0.9, alpha, a, b);
+  double x     = qtstable(0.01, alpha, a, b);
   double c     = -drift - x;
 
-  cerr << c << endl;
+  cerr << a << " " << b << " " << c << endl;
 
   mt19937 rng(seed);
 
