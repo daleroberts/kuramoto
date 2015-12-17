@@ -46,10 +46,9 @@ template <typename Iterable> inline void elementwise_add(Iterable &in, Iterable 
     el += *(in_iter++);
 }
 
-inline double sum(const vector<double> &v) 
-{
+inline double sum(const vector<double> &v) {
   double total = 0.0;
-  for (auto &el: v)
+  for (auto &el : v)
     total += el;
   return total;
 }
@@ -84,7 +83,7 @@ inline double order_psi(const vector<double> &theta) {
   sum_real    = sum_real / N;
   sum_complex = sum_complex / N;
 
-  return atan(sum_complex / sum_real);
+  return atan2(sum_complex, sum_real);
 }
 
 template <typename Distribution>
@@ -104,7 +103,7 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
   vector<double> xi(N, 0.);
 
   for (size_t j = 0; j < npaths; ++j) {
-    
+
     // set initial condition
     for (size_t i = 0; i < N; ++i)
       theta[i] = runif(rng);
