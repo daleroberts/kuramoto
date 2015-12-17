@@ -7,6 +7,7 @@
 #define _USE_MATH_DEFINES
 
 #include <cmath>
+#include <complex>
 #include <cstdint>
 #include <vector>
 #include <random>
@@ -26,6 +27,8 @@
 #include "graph.h"
 #include "variates.h"
 #include "statistics.h"
+
+typedef std::complex<double> Complex;
 
 namespace boost {
 namespace mpi {
@@ -72,18 +75,18 @@ inline double order_param(const vector<double> &theta) {
   return sqrt(sum_real * sum_real + sum_complex * sum_complex) / N;
 }
 
-inline double order_psi(const vector<double> &theta) {
-  size_t N           = theta.size();
-  double sum_real    = 0.0;
-  double sum_complex = 0.0;
+inline Complex order_psi(const vector<double> &theta) {
+  size_t N = theta.size();
+  double x = 0.0;
+  double y = 0.0;
   for (size_t j = 0; j < N; j++) {
-    sum_real += cos(theta[j]);
-    sum_complex += sin(theta[j]);
+    x = x + cos(theta[j]);
+    y = y + sin(theta[j]);
   }
-  sum_real    = sum_real / N;
-  sum_complex = sum_complex / N;
+  x = x / N;
+  y = y / N;
 
-  return atan2(sum_complex, sum_real);
+  return Complex(x, y);
 }
 
 template <typename Distribution>
@@ -102,15 +105,19 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
   vector<double> theta_(N, 0.);
   vector<double> xi(N, 0.);
 
+  double psi, prev_psi;
+  double adj = 0.;
+  Complex z;
+
   for (size_t j = 0; j < npaths; ++j) {
 
     // set initial condition
     for (size_t i = 0; i < N; ++i)
       theta[i] = runif(rng);
 
-    theta[N - 1] = -(sum(theta) - theta[N - 1]); // adjust for zero expectation
+    theta[N - 1] = -(sum(theta) - theta[N - 1]); // adjust
 
-    stats[0].add(order_psi(theta));
+    stats[0].add(0.);
 
     double drift;
 
@@ -129,7 +136,14 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
         theta_[i] += drift * dt + xi[i];
       }
       theta = theta_;
-      stats[k].add(order_psi(theta));
+
+      z   = order_psi(theta);
+      psi = atan2(z.imag(), z.real());
+      if ((z.real() < 0) && (z.imag() < 0) && (prev_psi * psi < 0))
+        adj    = adj + 2 * M_PI;
+      prev_psi = psi;
+
+      stats[k].add(psi + adj);
     }
   }
 
