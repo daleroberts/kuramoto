@@ -65,6 +65,20 @@ inline double order_param(const vector<double> &theta) {
   return sqrt(sum_real * sum_real + sum_complex * sum_complex) / N;
 }
 
+inline double order_psi(const vector<double> &theta) {
+  size_t N           = theta.size();
+  double sum_real    = 0.0;
+  double sum_complex = 0.0;
+  for (size_t j = 0; j < N; j++) {
+    sum_real += cos(theta[j]);
+    sum_complex += sin(theta[j]);
+  }
+  sum_real    = sum_real / N;
+  sum_complex = sum_complex / N;
+
+  return arctan(sum_complex / sum_real);
+}
+
 template <typename Distribution>
 vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const double a,
                          const double b, const double kappa, const double max_t,
@@ -85,18 +99,24 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
     for (size_t i = 0; i < N; ++i)
       theta[i] = runif(rng);
 
+    theta[N - 1] = -(sum(theta) - theta[N - 1]); // adjust for zero expectation
+
     stats[0].add(order_param(theta));
 
     double xi, drift;
 
     for (size_t k = 0; k <= nsteps; k++) {
+      for (size_t i = 0; i < N; i++)
+        xi[i] = dist(rng);
+
+      xi[N - 1] = -(sum(xi) - xi[N - 1]); // adjust for zero expectation
+
       for (size_t i = 0; i < N; i++) {
         drift = 0;
         for (auto &j : G.neighbours(i))
           drift -= kappa * sin(theta[i] - theta[j]);
 
-        xi = dist(rng);
-        theta_[i] += drift * dt + xi;
+        theta_[i] += drift * dt + xi[i];
       }
       theta = theta_;
       stats[k].add(order_param(theta));
@@ -107,6 +127,8 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
 }
 
 int main(int argc, char const *argv[]) {
+  mpi::environment env(argc, argv);
+
   const char *graphfile = argc > 1 ? argv[1] : "graphs.g6";
   uint32_t ngraphs      = argc > 2 ? atol(argv[2]) : 1;
   uint32_t seed         = argc > 3 ? atol(argv[3]) : 0;
@@ -124,7 +146,7 @@ int main(int argc, char const *argv[]) {
   double d  = dt * tgamma(1 - a) * a * pow(b, alpha - 1);
   double c  = -d - qtstable(0.9, alpha, a, b);
 
-  vector<Statistics> order_stats(nsteps + 1);
+  vector<Statistics> global_stats(nsteps + 1);
 
   TemperedStableDistribution rtstable(alpha, dt * a, b, c);
   StableDistribution rstable(alpha, dt * a);
@@ -139,67 +161,70 @@ int main(int argc, char const *argv[]) {
   ngraphs     = 0;
 
   bool first_graph = true;
-  double kappa = 1.0;
-  
+  double kappa     = 1.0;
+
   try {
-      ifstream infile(graphfile);
-      string line;
-      while (getline(infile, line)) {
-          Graph G(line);
-          vector<Statistics> stats;
-          ngraphs++;
+    ifstream infile(graphfile);
+    string line;
+    while (getline(infile, line)) {
+      Graph G(line);
+      vector<Statistics> stats;
+      ngraphs++;
 
-          if (first_graph) {
-              K           = (double)G.max_degree();
-              first_graph = false;
-          }
-
-
-          if (world.rank() == 0) {
-              // header
-              cout << '"' << graphfile;
-              cout << " ngraphs:" << ngraphs;
-              cout << " npaths:" << npaths_rank * world.size();
-              cout << " nsteps:" << nsteps;
-              cout << " alpha:" << alpha;
-              cout << " lambda:" << lambda;
-              cout << " sigma:" << sigma;
-              cout << " kappa:" << kappa;
-              cout << " seed:" << seed;
-              cout << '"' << endl;
-          }
-
-          if (alpha > 1.999) {
-              // Gaussian noise
-              stats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
-          } else {
-              if (lambda < 0.001) {
-                  // Stable noise
-                  stats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
-              } else {
-                  // Tempered stable noise
-                  stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
-              }
-          }
-          if (world.rank() == 0) {
-              mpi::reduce(world, stats, order_stats, std::plus<Statistics>(), 0);
-          } else {
-              mpi::reduce(world, stats, std::plus<Statistics>(), 0);
-          }
+      if (first_graph) {
+        K           = (double)G.max_degree();
+        first_graph = false;
       }
-  }
-  catch (const char *msg) {
-      cout << msg << endl;
-      mpi::abort(1);
+
+      if (world.rank() == 0) {
+        // header
+        cout << '"' << graphfile;
+        cout << " ngraphs:" << ngraphs;
+        cout << " npaths:" << npaths_rank * world.size();
+        cout << " nsteps:" << nsteps;
+        cout << " alpha:" << alpha;
+        cout << " lambda:" << lambda;
+        cout << " sigma:" << sigma;
+        cout << " kappa:" << kappa;
+        cout << " seed:" << seed;
+        cout << '"' << endl;
+      }
+
+      if (alpha > 1.999) {
+        // Gaussian noise
+        stats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+      } else {
+        if (lambda < 0.001) {
+          // Stable noise
+          stats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+        } else {
+          // Tempered stable noise
+          stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+        }
+      }
+      if (world.rank() == 0) {
+        mpi::reduce(world, stats, order_stats, std::plus<Statistics>(), 0);
+      } else {
+        mpi::reduce(world, stats, std::plus<Statistics>(), 0);
+      }
+    }
+  } catch (const char *msg) {
+    cout << msg << endl;
+    env.abort(1);
   }
 
   if (world.rank() == 0) {
-    // rows
+    mpi::reduce(world, stats, global_stats, std::plus<Statistics>(), 0);
+
+    // write results
     cout << setiosflags(ios::fixed);
-    for (size_t i = 0; i < order_stats.size(); ++i) {
+    for (size_t i = 0; i < global_stats.size(); ++i) {
       cout << setw(8) << setfill(' ') << setprecision(4);
-      cout << i * dt << '\t' << order_stats[i] << endl;
+      cout << i * dt << '\t' << global_stats[i] << endl;
     }
+
+  } else {
+    mpi::reduce(world, global_stats, std::plus<Statistics>(), 0);
   }
 
   return 0;
