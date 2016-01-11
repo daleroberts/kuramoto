@@ -54,6 +54,13 @@ inline double mod2pi(double theta) {
   return theta;
 }
 
+inline double sum(const vector<double> &v) {
+  double total = 0.0;
+  for (auto &el : v)
+    total += el;
+  return total;
+}
+
 inline double order_param(const vector<double> &theta) {
   size_t N           = theta.size();
   double sum_real    = 0.0;
@@ -76,7 +83,7 @@ inline double order_psi(const vector<double> &theta) {
   sum_real    = sum_real / N;
   sum_complex = sum_complex / N;
 
-  return arctan(sum_complex / sum_real);
+  return atan(sum_complex / sum_real);
 }
 
 template <typename Distribution>
@@ -94,22 +101,24 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
   for (size_t j = 0; j < npaths; ++j) {
     vector<double> theta(N, 0.);
     vector<double> theta_(N, 0.);
+    vector<double> xi(N, 0.);
+    double drift;
 
     // set initial condition
     for (size_t i = 0; i < N; ++i)
       theta[i] = runif(rng);
 
-    theta[N - 1] = -(sum(theta) - theta[N - 1]); // adjust for zero expectation
+    // adjust for zero empirical expectation
+    theta[N - 1] = -(sum(theta) - theta[N - 1]);
 
     stats[0].add(order_param(theta));
-
-    double xi, drift;
 
     for (size_t k = 0; k <= nsteps; k++) {
       for (size_t i = 0; i < N; i++)
         xi[i] = dist(rng);
 
-      xi[N - 1] = -(sum(xi) - xi[N - 1]); // adjust for zero expectation
+      // adjust for zero empirical expectation
+      // xi[N - 1] = -(sum(xi) - xi[N - 1]);
 
       for (size_t i = 0; i < N; i++) {
         drift = 0;
@@ -126,9 +135,7 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
   return stats;
 }
 
-int main(int argc, char const *argv[]) {
-  mpi::environment env(argc, argv);
-
+int main(int argc, char *argv[]) {
   const char *graphfile = argc > 1 ? argv[1] : "graphs.g6";
   uint32_t ngraphs      = argc > 2 ? atol(argv[2]) : 1;
   uint32_t seed         = argc > 3 ? atol(argv[3]) : 0;
@@ -152,7 +159,7 @@ int main(int argc, char const *argv[]) {
   StableDistribution rstable(alpha, dt * a);
   NormalDistribution rnorm(0, dt * pow(sigma, 2) / 2); // scaled!
 
-  mpi::environment env;
+  mpi::environment env(argc, argv, true);
   mpi::communicator world;
   int npaths_rank;
 
@@ -202,8 +209,9 @@ int main(int argc, char const *argv[]) {
           stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
         }
       }
+
       if (world.rank() == 0) {
-        mpi::reduce(world, stats, order_stats, std::plus<Statistics>(), 0);
+        mpi::reduce(world, stats, global_stats, std::plus<Statistics>(), 0);
       } else {
         mpi::reduce(world, stats, std::plus<Statistics>(), 0);
       }
@@ -214,17 +222,12 @@ int main(int argc, char const *argv[]) {
   }
 
   if (world.rank() == 0) {
-    mpi::reduce(world, stats, global_stats, std::plus<Statistics>(), 0);
-
     // write results
     cout << setiosflags(ios::fixed);
     for (size_t i = 0; i < global_stats.size(); ++i) {
       cout << setw(8) << setfill(' ') << setprecision(4);
       cout << i * dt << '\t' << global_stats[i] << endl;
     }
-
-  } else {
-    mpi::reduce(world, global_stats, std::plus<Statistics>(), 0);
   }
 
   return 0;
