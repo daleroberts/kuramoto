@@ -139,55 +139,61 @@ int main(int argc, char const *argv[]) {
   ngraphs     = 0;
 
   bool first_graph = true;
-  double kappa;
+  double kappa = 1.0;
+  
+  try {
+      ifstream infile(graphfile);
+      string line;
+      while (getline(infile, line)) {
+          Graph G(line);
+          vector<Statistics> stats;
+          ngraphs++;
 
-  ifstream infile(graphfile);
-  string line;
-  while (getline(infile, line)) {
-    Graph G(line);
-    vector<Statistics> stats;
-    ngraphs++;
+          if (first_graph) {
+              K           = (double)G.max_degree();
+              first_graph = false;
+          }
 
-    if (first_graph) {
-      K           = (double)G.max_degree();
-      first_graph = false;
-    }
 
-    kappa = 1.0;
+          if (world.rank() == 0) {
+              // header
+              cout << '"' << graphfile;
+              cout << " ngraphs:" << ngraphs;
+              cout << " npaths:" << npaths_rank * world.size();
+              cout << " nsteps:" << nsteps;
+              cout << " alpha:" << alpha;
+              cout << " lambda:" << lambda;
+              cout << " sigma:" << sigma;
+              cout << " kappa:" << kappa;
+              cout << " seed:" << seed;
+              cout << '"' << endl;
+          }
 
-    if (alpha > 1.999) {
-      // Gaussian noise
-      stats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
-    } else {
-      if (lambda < 0.001) {
-        // Stable noise
-        stats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
-      } else {
-        // Tempered stable noise
-        stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+          if (alpha > 1.999) {
+              // Gaussian noise
+              stats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+          } else {
+              if (lambda < 0.001) {
+                  // Stable noise
+                  stats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+              } else {
+                  // Tempered stable noise
+                  stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+              }
+          }
+          if (world.rank() == 0) {
+              mpi::reduce(world, stats, order_stats, std::plus<Statistics>(), 0);
+          } else {
+              mpi::reduce(world, stats, std::plus<Statistics>(), 0);
+          }
       }
-    }
-
-    if (world.rank() == 0) {
-      mpi::reduce(world, stats, order_stats, std::plus<Statistics>(), 0);
-    } else {
-      mpi::reduce(world, stats, std::plus<Statistics>(), 0);
-    }
+  }
+  catch (const char *msg) {
+      cout << msg << endl;
+      mpi::abort(1);
   }
 
   if (world.rank() == 0) {
-    // header
-    cout << '"' << graphfile;
-    cout << " ngraphs:" << ngraphs;
-    cout << " npaths:" << npaths_rank * world.size();
-    cout << " nsteps:" << nsteps;
-    cout << " alpha:" << alpha;
-    cout << " lambda:" << lambda;
-    cout << " sigma:" << sigma;
-    cout << " kappa:" << kappa;
-    cout << " seed:" << seed;
-    cout << '"' << endl;
-
     // rows
     cout << setiosflags(ios::fixed);
     for (size_t i = 0; i < order_stats.size(); ++i) {

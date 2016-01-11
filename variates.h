@@ -8,6 +8,8 @@ using namespace std;
 typedef std::normal_distribution<> NormalDistribution;
 typedef std::complex<double> Complex;
 
+const size_t MAX_REJECTS = 1000;
+
 class StableDistribution {
  public:
   explicit StableDistribution(const double& alpha = double(0.5),
@@ -61,10 +63,13 @@ class TemperedStableDistribution {
   template <class _UniformRandomNumberGenerator>
   double operator()(_UniformRandomNumberGenerator& urng) {
     double U, V;
+    size_t k = 0;
     if (_alpha < 1) {
       do {
         U = _runif(urng);
         V = _rstable(urng);
+	if (k++ > MAX_REJECTS)
+	  throw "exceeded maximum number of rejections";
       } while (U > exp(-_b * V));
       return V;
 
@@ -72,6 +77,8 @@ class TemperedStableDistribution {
       do {
         U = _runif(urng);
         V = _rstable(urng);
+	if (k++ > MAX_REJECTS)
+	  throw "exceeded maximum number of rejections";
       } while (U > exp(-_b * (V + _c)));
       return V - tgamma(1 - _alpha) * _a * pow(_b, _alpha - 1.);
     }
