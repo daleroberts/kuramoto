@@ -170,6 +170,20 @@ int main(int argc, char *argv[]) {
   bool first_graph = true;
   double kappa     = 1.0;
 
+  if (world.rank() == 0) {
+    // header
+    cout << '"' << graphfile;
+    cout << " ngraphs:" << ngraphs;
+    cout << " npaths:" << npaths_rank * world.size();
+    cout << " nsteps:" << nsteps;
+    cout << " alpha:" << alpha;
+    cout << " lambda:" << lambda;
+    cout << " sigma:" << sigma;
+    cout << " kappa:" << kappa;
+    cout << " seed:" << seed;
+    cout << '"' << endl;
+  }
+
   try {
     ifstream infile(graphfile);
     string line;
@@ -181,20 +195,6 @@ int main(int argc, char *argv[]) {
       if (first_graph) {
         K           = (double)G.max_degree();
         first_graph = false;
-      }
-
-      if (world.rank() == 0) {
-        // header
-        cout << '"' << graphfile;
-        cout << " ngraphs:" << ngraphs;
-        cout << " npaths:" << npaths_rank * world.size();
-        cout << " nsteps:" << nsteps;
-        cout << " alpha:" << alpha;
-        cout << " lambda:" << lambda;
-        cout << " sigma:" << sigma;
-        cout << " kappa:" << kappa;
-        cout << " seed:" << seed;
-        cout << '"' << endl;
       }
 
       if (alpha > 1.999) {
