@@ -1,5 +1,5 @@
 /*
- * Kuramoto Model with Tempered Stable Noise
+ * Kuramoto Model with Levy Noise
  *
  * Dale Roberts <dale.o.roberts@gmail.com>
  */
