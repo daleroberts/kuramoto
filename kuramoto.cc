@@ -6,15 +6,16 @@
 
 #define _USE_MATH_DEFINES
 
-#include <cmath>
-#include <cstdint>
-#include <vector>
-#include <random>
-#include <fstream>
-#include <string>
-#include <sstream>
+#include <stdexcept>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <cstdint>
 #include <iomanip>
+#include <random>
+#include <string>
+#include <vector>
+#include <cmath>
 
 #include <boost/mpi.hpp>
 #include <boost/mpi/collectives/reduce.hpp>
@@ -62,53 +63,64 @@ inline double sum(const vector<double> &v) {
 }
 
 inline double order_param(const vector<double> &theta) {
-  size_t N           = theta.size();
-  double sum_real    = 0.0;
-  double sum_complex = 0.0;
+  size_t N = theta.size();
+  double r = 0.0;
+  double c = 0.0;
   for (size_t j = 0; j < N; j++) {
-    sum_real += cos(theta[j]);
-    sum_complex += sin(theta[j]);
+    r += cos(theta[j]);
+    c += sin(theta[j]);
   }
-  return sqrt(sum_real * sum_real + sum_complex * sum_complex) / N;
+  return sqrt(r * r + c * c) / N;
 }
 
 inline double order_psi(const vector<double> &theta) {
-  size_t N           = theta.size();
-  double sum_real    = 0.0;
-  double sum_complex = 0.0;
+  size_t N = theta.size();
+  double r = 0.0;
+  double c = 0.0;
   for (size_t j = 0; j < N; j++) {
-    sum_real += cos(theta[j]);
-    sum_complex += sin(theta[j]);
+    r += cos(theta[j]);
+    c += sin(theta[j]);
   }
-  sum_real    = sum_real / N;
-  sum_complex = sum_complex / N;
-
-  return atan(sum_complex / sum_real);
+  r = r / N;
+  c = c / N;
+  return atan(c / r);
 }
 
 template <typename Distribution>
 vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const double a,
                          const double b, const double kappa, const double max_t,
                          const uint32_t nsteps, const uint32_t npaths, const uint32_t seed) {
+
   double dt = max_t / nsteps;
   auto N    = G.size();
 
   vector<Statistics> stats(nsteps + 1);
 
+  // Initialise the random number generator. Each rank's PRNG is
+  // initialised with its own seed
+
   mt19937 rng(seed);
+
+  // Initialise the distribution for the initial distribution of the
+  // vertices
+
   uniform_real_distribution<> runif(-M_PI, M_PI);
 
   for (size_t j = 0; j < npaths; ++j) {
+    // Start simulating a path
+
     vector<double> theta(N, 0.);
     vector<double> theta_(N, 0.);
     vector<double> xi(N, 0.);
     double drift;
 
-    // set initial condition
+    // Set initial condition
+
     for (size_t i = 0; i < N; ++i)
       theta[i] = runif(rng);
 
-    // adjust for zero empirical expectation
+    // Adjust initial condition to ensure zero empirical expectation
+
     theta[N - 1] = -(sum(theta) - theta[N - 1]);
 
     stats[0].add(order_param(theta));
@@ -117,8 +129,11 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
       for (size_t i = 0; i < N; i++)
         xi[i] = dist(rng);
 
-      // adjust for zero empirical expectation
+      // Adjust for zero empirical expectation of noise
+
       // xi[N - 1] = -(sum(xi) - xi[N - 1]);
+
+      // Perform an Euler time stepping
 
       for (size_t i = 0; i < N; i++) {
         drift = 0;
@@ -127,7 +142,13 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
 
         theta_[i] += drift * dt + xi[i];
       }
+
+      // Update values in one go
+
       theta = theta_;
+
+      // Save result for this time step
+
       stats[k].add(order_param(theta));
     }
   }
@@ -136,45 +157,47 @@ vector<Statistics> paths(Graph &G, Distribution &dist, const double alpha, const
 }
 
 int main(int argc, char *argv[]) {
-  const char *graphfile = argc > 1 ? argv[1] : "graphs.g6";
-  uint32_t ngraphs      = argc > 2 ? atol(argv[2]) : 1;
-  uint32_t seed         = argc > 3 ? atol(argv[3]) : 0;
-  uint32_t npaths       = argc > 4 ? atoi(argv[4]) : 10;
-  uint32_t nsteps       = argc > 5 ? atoi(argv[5]) : 5;
-  double alpha          = argc > 6 ? atof(argv[6]) : 1.5;     // stability
-  double lambda         = argc > 7 ? atof(argv[7]) : 1.0;     // tempering
-  double sigma          = argc > 8 ? atof(argv[8]) : 5.78115; // diffusivity
-  double K              = argc > 9 ? atof(argv[9]) : 1.0;     // coupling
-  double max_t          = argc > 10 ? atof(argv[10]) : 2.0;
-
-  double dt = max_t / nsteps;
-  double a  = 0.5 * alpha * pow(sigma, 2.0) / (tgamma(1 - alpha) * cos(M_PI * alpha / 2));
-  double b  = lambda;
-  double d  = dt * tgamma(1 - a) * a * pow(b, alpha - 1);
-  double c  = -d - qtstable(0.9, alpha, a, b);
-
-  vector<Statistics> global_stats(nsteps + 1);
-
-  TemperedStableDistribution rtstable(alpha, dt * a, b, c);
-  StableDistribution rstable(alpha, dt * a);
-  NormalDistribution rnorm(0, dt * pow(sigma, 2) / 2); // scaled!
+  // Setup the MPI environment
 
   mpi::environment env(argc, argv, true);
   mpi::communicator world;
-  int npaths_rank;
 
-  npaths_rank = npaths / world.size();
-  seed        = seed + world.rank();
-  ngraphs     = 0;
+  // Parse the command line parameters or set defaults
 
-  bool first_graph = true;
-  double kappa     = 1.0;
+  const char *graphfn;
+  uint32_t ngraphs, seed, npaths, nsteps, rpaths, rseed;
+  double alpha, lambda, sigma, max_t, dt, a, b, c, d, kappa;
+
+  graphfn = argc > 1 ? argv[1] : "graphs.g6";
+  ngraphs = argc > 2 ? atol(argv[2]) : 1;
+  seed    = argc > 3 ? atol(argv[3]) : 0;
+  npaths  = argc > 4 ? atoi(argv[4]) : 1;
+  nsteps  = argc > 5 ? atoi(argv[5]) : 100;
+  alpha   = argc > 6 ? atof(argv[6]) : 1.5;     // stability
+  lambda  = argc > 7 ? atof(argv[7]) : 1.0;     // tempering
+  sigma   = argc > 8 ? atof(argv[8]) : 5.78115; // diffusivity
+  kappa   = argc > 9 ? atof(argv[9]) : 1.0;     // coupling
+  max_t   = argc > 10 ? atof(argv[10]) : 1.0;
+
+  // Derive distributional and time step parameters
+
+  dt = max_t / nsteps;
+  a  = 0.5 * alpha * pow(sigma, 2.0) / (tgamma(1 - alpha) * cos(M_PI * alpha / 2));
+  b  = lambda;
+  d  = tgamma(1 - a) * a * pow(b, alpha - 1);
+
+  // Determine number of paths and seed for each rank
+
+  rpaths = (uint32_t)npaths / world.size();
+  rseed  = seed + world.rank();
+
+  // Print out header before we do anything so that output file is
+  // generated even if the simulation fails
 
   if (world.rank() == 0) {
-    // header
-    cout << '"' << graphfile;
+    cout << '"' << graphfn;
     cout << " ngraphs:" << ngraphs;
-    cout << " npaths:" << npaths_rank * world.size();
+    cout << " npaths:" << rpaths * world.size();
     cout << " nsteps:" << nsteps;
     cout << " alpha:" << alpha;
     cout << " lambda:" << lambda;
@@ -184,49 +207,85 @@ int main(int argc, char *argv[]) {
     cout << '"' << endl;
   }
 
-  try {
-    ifstream infile(graphfile);
-    string line;
-    while (getline(infile, line)) {
-      Graph G(line);
-      vector<Statistics> stats;
-      ngraphs++;
+  // Save statistics for each time step
 
-      if (first_graph) {
-        K           = (double)G.max_degree();
-        first_graph = false;
-      }
+  vector<Statistics> stats(nsteps + 1);
+
+  try {
+    // Attempt to determine optimal c parameter. This can fail as it
+    // may be impossible to find the quantile for a certain choice of
+    // parameters
+
+    c = -d*dt - qtstable(0.9, alpha, a, b);
+
+    // Initialise the distributions
+
+    TemperedStableDistribution rtstable(alpha, dt * a, b, c);
+    StableDistribution rstable(alpha, dt * a);
+    NormalDistribution rnorm(0, dt * pow(sigma, 2) / 2);
+
+    // Open file containing graphs to simulate on
+
+    uint32_t k = 0;
+    ifstream infile(graphfn);
+    string line;
+
+    while (getline(infile, line)) {
+
+      // Read in a graph
+
+      Graph G(line);
+
+      // Each rank calculates a portion of the paths and saves the
+      // statistics at each time step
+
+      vector<Statistics> rstats;
+
+      // Depending on the choice of parameters, perform the simulation
+      // with a different distribution
 
       if (alpha > 1.999) {
         // Gaussian noise
-        stats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+        rstats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, rpaths, seed);
       } else {
         if (lambda < 0.001) {
           // Stable noise
-          stats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+          rstats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, rpaths, seed);
         } else {
           // Tempered stable noise
-          stats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, npaths_rank, seed);
+          rstats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, rpaths, seed);
         }
       }
 
+      // Aggregate the statistics together
+
       if (world.rank() == 0) {
-        mpi::reduce(world, stats, global_stats, std::plus<Statistics>(), 0);
+        mpi::reduce(world, rstats, stats, std::plus<Statistics>(), 0);
       } else {
-        mpi::reduce(world, stats, std::plus<Statistics>(), 0);
+        mpi::reduce(world, rstats, std::plus<Statistics>(), 0);
       }
+
+      // Stop performing simulations if we exceed the desired number
+      // of graphs
+
+      if (k++ >= ngraphs)
+        break;
     }
-  } catch (const char *msg) {
-    cout << msg << endl;
+
+  } catch (const std::exception &e) {
+
+    // Abort the simulation if an error is caught
+
     env.abort(1);
   }
 
+  // Write out the results
+
   if (world.rank() == 0) {
-    // write results
     cout << setiosflags(ios::fixed);
-    for (size_t i = 0; i < global_stats.size(); ++i) {
+    for (size_t i = 0; i < stats.size(); ++i) {
       cout << setw(8) << setfill(' ') << setprecision(4);
-      cout << i * dt << '\t' << global_stats[i] << endl;
+      cout << i * dt << '\t' << stats[i] << endl;
     }
   }
 

@@ -48,9 +48,9 @@ double ptstable(double x, double alpha, double a, double b) {
 
 double qtstable(double p, double alpha, double a, double b) {
   auto f = [=](double x) { return ptstable(x, alpha, a, b) - p; };
-  auto digits              = std::numeric_limits<double>::digits;
-  auto tol                 = boost::math::tools::eps_tolerance<double>(digits);
-  boost::uintmax_t maxiter = 100;
-  auto r = boost::math::tools::bracket_and_solve_root(f, 0.05, 1.1, true, tol, maxiter);
+  auto digits = std::numeric_limits<double>::digits;
+  auto tol    = boost::math::tools::eps_tolerance<double>(digits);
+  boost::uintmax_t iters = MAX_ITERATIONS;
+  auto r = boost::math::tools::bracket_and_solve_root(f, 0.05, 1.1, true, tol, iters);
   return (r.first + r.second) / 2.0;
 }

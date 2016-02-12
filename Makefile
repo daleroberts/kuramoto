@@ -4,7 +4,7 @@ CXX?=icpc
 CXXFLAGS=-Wall -std=c++11 -lboost_serialization-mt -lboost_mpi-mt -L/apps/boost/1.59.0/lib
 else
 CXX?=g++
-CXXFLAGS=-Wall -std=c++11 -I/apps/eigen/3.2.1/include/eigen3
+CXXFLAGS=-Wall -std=c++11 -I/apps/eigen/3.2.1/include/eigen3 -I/usr/local/include/eigen3
 LIBS=-L/apps/openmpi/1.10.0/lib -L/apps/boost/1.59.0/lib -lm -lmpi -lboost_serialization-mt -lboost_mpi-mt
 endif
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <stdexcept>
 #include <random>
 #include <complex>
 #include <cmath>
@@ -8,15 +9,14 @@ using namespace std;
 typedef std::normal_distribution<> NormalDistribution;
 typedef std::complex<double> Complex;
 
-const size_t MAX_REJECTS = 1000;
+const size_t MAX_ITERATIONS = 1000;
 
 class StableDistribution {
- public:
-  explicit StableDistribution(const double& alpha = double(0.5),
-                              const double& a = double(1))
+public:
+  explicit StableDistribution(const double &alpha = double(0.5), const double &a = double(1))
       : _alpha(alpha), _a(a), _runif(-M_PI_2, M_PI_2), _rexp(1) {
     _factor = pow(-a * tgamma(-alpha) * cos(M_PI_2 * alpha), 1. / alpha);
-    _theta = atan(tan(M_PI_2 * alpha));
+    _theta  = atan(tan(M_PI_2 * alpha));
   }
 
   double alpha() const { return _alpha; }
@@ -24,7 +24,7 @@ class StableDistribution {
   double a() const { return _a; }
 
   template <class _UniformRandomNumberGenerator>
-  double operator()(_UniformRandomNumberGenerator& urng) {
+  double operator()(_UniformRandomNumberGenerator &urng) {
     double U, E, X;
     U = _runif(urng);
     E = _rexp(urng);
@@ -33,7 +33,7 @@ class StableDistribution {
     return _factor * X;
   }
 
- private:
+private:
   double _alpha;
   double _a;
   double _factor;
@@ -47,11 +47,10 @@ double ptstable(double x, double alpha, double a, double b);
 double qtstable(double p, double alpha, double a, double b);
 
 class TemperedStableDistribution {
- public:
-  explicit TemperedStableDistribution(const double& alpha = double(0.5),
-                                      const double& a = double(1),
-                                      const double& b = double(1),
-                                      const double& c = double(1.1))
+public:
+  explicit TemperedStableDistribution(const double &alpha = double(0.5),
+                                      const double &a = double(1), const double &b = double(1),
+                                      const double &c = double(1.1))
       : _alpha(alpha), _a(a), _b(b), _c(c), _rstable(alpha, a), _runif(0, 1) {}
 
   double alpha() const { return _alpha; }
@@ -61,15 +60,15 @@ class TemperedStableDistribution {
   double b() const { return _b; }
 
   template <class _UniformRandomNumberGenerator>
-  double operator()(_UniformRandomNumberGenerator& urng) {
+  double operator()(_UniformRandomNumberGenerator &urng) {
     double U, V;
     size_t k = 0;
     if (_alpha < 1) {
       do {
         U = _runif(urng);
         V = _rstable(urng);
-	if (k++ > MAX_REJECTS)
-	  throw "exceeded maximum number of rejections";
+        if (k++ > MAX_ITERATIONS)
+          throw std::runtime_error("exceeded maximum number of rejections");
       } while (U > exp(-_b * V));
       return V;
 
@@ -77,14 +76,14 @@ class TemperedStableDistribution {
       do {
         U = _runif(urng);
         V = _rstable(urng);
-	if (k++ > MAX_REJECTS)
-	  throw "exceeded maximum number of rejections";
+        if (k++ > MAX_ITERATIONS)
+          throw std::runtime_error("exceeded maximum number of rejections");
       } while (U > exp(-_b * (V + _c)));
       return V - tgamma(1 - _alpha) * _a * pow(_b, _alpha - 1.);
     }
   }
 
- private:
+private:
   double _alpha;
   double _a;
   double _b;

@@ -4,21 +4,13 @@
 #include <cmath>
 #include "statistics.h"
 
-Statistics::Statistics() {
-  reset();
-}
+Statistics::Statistics() { reset(); }
 
-size_t Statistics::samples() const {
-  return sample_number_;
-}
+size_t Statistics::samples() const { return sample_number_; }
 
-double Statistics::weighted_sum() const {
-  return sample_weight_;
-}
+double Statistics::weighted_sum() const { return sample_weight_; }
 
-double Statistics::mean() const {
-  return sum_ / sample_weight_;
-}
+double Statistics::mean() const { return sum_ / sample_weight_; }
 
 double Statistics::variance() const {
   double m = mean();
@@ -28,9 +20,7 @@ double Statistics::variance() const {
   return v;
 }
 
-double Statistics::stddev() const {
-  return std::sqrt(variance());
-}
+double Statistics::stddev() const { return std::sqrt(variance()); }
 
 double Statistics::error_estimate() const {
   double var = variance();
@@ -43,7 +33,7 @@ double Statistics::skewness() const {
   if (s == 0.0)
     return 0.0;
 
-  double m = mean();
+  double m      = mean();
   double result = cubic_sum_ / sample_weight_;
   result -= 3.0 * m * (quadratic_sum_ / sample_weight_);
   result += 2.0 * m * m * m;
@@ -76,13 +66,9 @@ double Statistics::kurtosis() const {
   return result - c;
 }
 
-double Statistics::min() const {
-  return min_;
-}
+double Statistics::min() const { return min_; }
 
-double Statistics::max() const {
-  return max_;
-}
+double Statistics::max() const { return max_; }
 
 void Statistics::add(double value, double weight) {
   size_t old_samples = sample_number_;
@@ -107,17 +93,17 @@ void Statistics::add(double value, double weight) {
 }
 
 void Statistics::reset() {
-  min_ = std::numeric_limits<double>::min();
-  max_ = std::numeric_limits<double>::max();
-  sample_number_ = 0;
-  sample_weight_ = 0.0;
-  sum_ = 0.0;
-  quadratic_sum_ = 0.0;
-  cubic_sum_ = 0.0;
+  min_              = std::numeric_limits<double>::min();
+  max_              = std::numeric_limits<double>::max();
+  sample_number_    = 0;
+  sample_weight_    = 0.0;
+  sum_              = 0.0;
+  quadratic_sum_    = 0.0;
+  cubic_sum_        = 0.0;
   fourth_power_sum_ = 0.0;
 }
 
-Statistics Statistics::operator+(const Statistics& other) const {
+Statistics Statistics::operator+(const Statistics &other) const {
   Statistics tmp = *this;
   tmp.sample_number_ += other.sample_number_;
   tmp.sample_weight_ += other.sample_weight_;
@@ -130,19 +116,20 @@ Statistics Statistics::operator+(const Statistics& other) const {
   return tmp;
 }
 
-Statistics& Statistics::operator=(const Statistics& other) {
-  sample_number_ = other.sample_number_;
-  sample_weight_ = other.sample_weight_;
-  sum_ = other.sum_;
-  quadratic_sum_ = other.quadratic_sum_;
-  cubic_sum_ = other.cubic_sum_;
+Statistics &Statistics::operator=(const Statistics &other) {
+  //
+  sample_number_    = other.sample_number_;
+  sample_weight_    = other.sample_weight_;
+  sum_              = other.sum_;
+  quadratic_sum_    = other.quadratic_sum_;
+  cubic_sum_        = other.cubic_sum_;
   fourth_power_sum_ = other.fourth_power_sum_;
-  min_ = other.min_;
-  max_ = other.max_;
+  min_              = other.min_;
+  max_              = other.max_;
   return *this;
 }
 
-Statistics& Statistics::operator+=(const Statistics& other) {
+Statistics &Statistics::operator+=(const Statistics &other) {
   *this = *this + other;
   return *this;
 }
