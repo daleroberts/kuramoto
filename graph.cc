@@ -5,9 +5,13 @@
 #include <string>
 
 #include "graph.h"
-#include "utils.h"
 
 using namespace std;
+
+template <typename Container>
+void sort(Container &c) {
+  std::sort(c.begin(), c.end());
+}
 
 Graph::Graph(const string &str) {
     string s(str);
@@ -64,7 +68,7 @@ Graph::nodes(void) {
     vector<node_t> v;
     for (auto &node: _adj)
         v.push_back(node.first);
-    sa::sort(v);
+    sort(v);
     return v;
 }
 
