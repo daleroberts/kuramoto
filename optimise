@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+import numpy as np
+import subprocess
+
+from bayes_opt import BayesianOptimization
+from subprocess import check_output
+
+def tryparse(x):
+    try:
+        return float(x)
+    except ValueError:
+        return x
+
+def kuramoto(graphfn='test.g6', ngraphs=1, seed=3123, npaths=10,
+             nsteps=100, alpha=2.0, lambdaa=0.0, sigma=2.1,
+             kappa=1.0, maxtime=1.0):
+    
+    cmd = ['mpirun', 'kuramoto', graphfn, str(ngraphs), str(seed),
+           str(npaths), str(nsteps), str(alpha), str(lambdaa),
+           str(sigma), str(kappa), str(maxtime)]
+
+    try:
+        data = check_output(cmd, universal_newlines=True).split('\n')
+    except subprocess.CalledProcessError as e:
+        print(' '.join(e.cmd))
+        print(e.output)
+        raise e
+
+    header, rest = data[0], data[1:]
+    
+    header = [x.split(':') for x in header.strip('"').split(' ')]
+    params = {x:y for x,y in header}
+    
+    values = []
+    for line in [line for line in rest if len(line) > 0]:
+        values.append([float(el.strip()) for el in line.split('\t')])
+    time, avg, stddev = [np.array(el) for el in map(list, zip(*values))]
+
+    return (time, avg, stddev)
+
+def f(alpha, sigma):
+    if alpha == 1.0:
+        return 0.0
+    time, avg, stddev = kuramoto(alpha=alpha, sigma=sigma, lambdaa=0.1)
+    r = avg[-1]
+    xx = 1/(0.8-r)
+    if np.isnan(xx):
+        return 0.0
+    else:
+        return xx
+    
+
+def main():
+    bo = BayesianOptimization(f,
+                              {'alpha': (0.01, 2.0),
+                               'sigma': (0.01, 20.0)})
+
+    bo.explore({'alpha': [2.0], 'sigma': [2.0]})
+
+    bo.maximize(init_points=5, n_iter=30)
+
+    print(bo.res['max'])
+    #print(bo.res['all'])
+ 
+
+if __name__ == '__main__':
+    main()

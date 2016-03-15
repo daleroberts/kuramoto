@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
   // generated even if the simulation fails
 
   if (world.rank() == 0) {
-    cout << '"' << graphfn;
+    cout << "\"graphfn:" << graphfn;
     cout << " ngraphs:" << ngraphs;
     cout << " npaths:" << rpaths * world.size();
     cout << " nsteps:" << nsteps;
@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
     cout << " sigma:" << sigma;
     cout << " kappa:" << kappa;
     cout << " seed:" << seed;
-    cout << '"' << endl;
+    cout << "\"" << endl;
   }
 
   // Save statistics for each time step
@@ -246,14 +246,14 @@ int main(int argc, char *argv[]) {
 
       if (alpha > 1.999) {
         // Gaussian noise
-        rstats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, rpaths, seed);
+        rstats = paths(G, rnorm, alpha, a, b, kappa, max_t, nsteps, rpaths, rseed);
       } else {
         if (lambda < 0.001) {
           // Stable noise
-          rstats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, rpaths, seed);
+          rstats = paths(G, rstable, alpha, a, b, kappa, max_t, nsteps, rpaths, rseed);
         } else {
           // Tempered stable noise
-          rstats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, rpaths, seed);
+          rstats = paths(G, rtstable, alpha, a, b, kappa, max_t, nsteps, rpaths, rseed);
         }
       }
 
