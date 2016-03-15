@@ -15,7 +15,7 @@ def kuramoto(graphfn='test.g6', ngraphs=1, seed=3123, npaths=10,
              nsteps=100, alpha=2.0, lambdaa=0.0, sigma=2.1,
              kappa=1.0, maxtime=1.0):
     
-    cmd = ['mpirun', 'kuramoto', graphfn, str(ngraphs), str(seed),
+    cmd = ['mpirun', './kuramoto', graphfn, str(ngraphs), str(seed),
            str(npaths), str(nsteps), str(alpha), str(lambdaa),
            str(sigma), str(kappa), str(maxtime)]
 
@@ -27,9 +27,9 @@ def kuramoto(graphfn='test.g6', ngraphs=1, seed=3123, npaths=10,
         raise e
 
     header, rest = data[0], data[1:]
-    
-    header = [x.split(':') for x in header.strip('"').split(' ')]
-    params = {x:y for x,y in header}
+
+    #header = [x.split(':') for x in header.strip('"').split(' ')]
+    #params = {x:y for x,y in header}
     
     values = []
     for line in [line for line in rest if len(line) > 0]:
