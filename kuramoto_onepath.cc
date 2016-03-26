@@ -49,7 +49,7 @@ inline double mod2pi(double theta) {
 
 template <typename Derived> inline double sum(const Eigen::MatrixBase<Derived> &v) {
   double total = 0.;
-  for (size_t j = 0; j < v.size(); j++) {
+  for (int j = 0; j < v.size(); j++) {
     total += v[j];
   }
   return total;
