@@ -1,23 +1,22 @@
-CXX?=g++
-CXXFLAGS=-Wall -std=c++11 -Wno-deprecated-declarations
-LIBS=-lmpi -lboost_serialization -lboost_mpi
+CXX=g++ -std=c++11
+
+CXXFLAGS=-Wall -Wno-deprecated-declarations
+MPIFLAGS=$(shell mpic++ -showme:compile)
+EIGENFLAGS=$(shell pkg-config eigen3 --cflags)
+
+MPILIBS=$(shell mpic++ -showme:link)
+LIBS=-lboost_serialization -lboost_mpi
 
 OBJS=$(patsubst %.cc,%.o,$(wildcard *.cc))
-DEPS=$(OBJS:.o=.d)
-EXEC=kuramoto kuramoto_onepath
-
-all: $(EXEC)
-
-kuramoto_onepath: kuramoto_onepath.o graph.o statistics.o variates.o
-	$(CXX) $(CXXFLAGS) $(LIBS) $^ -o $@
+DEPS=$(patsubst %.cc,%.d,$(wildcard *.cc))
 
 kuramoto: kuramoto.o graph.o statistics.o variates.o
-	$(CXX) $(CXXFLAGS) $(LIBS) `mpic++ -showme:link` $^ -o $@
+	$(CXX) $(MPILIBS) $(LIBS) $^ -o $@
 
+clean:
+	@rm -fr *.d $(OBJS) $(EXEC)
+	
 -include $(DEPS)
 
 %.o: %.cc
-	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@
-
-clean:
-	@rm -fr $(OBJS) $(DEPS) $(EXEC)
+	$(CXX) $(CXXFLAGS) $(MPIFLAGS) $(EIGENFLAGS) -MMD -c $< -o $@
